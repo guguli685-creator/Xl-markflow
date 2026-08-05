@@ -4,21 +4,9 @@
     <meta charset="UTF-8">
     <title>MarkFlow - 沉浸手帐空间</title>
     <style>
-        @font-face {
-            font-family: 'CustomHandwritingFont';
-            src: url('./font.woff2') format('woff2'),
-                 url('./font.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, input, button, textarea, select {
-            font-family: 'CustomHandwritingFont', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
         body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #fdfbf7;
             color: #5c4b43;
             display: flex;
@@ -44,145 +32,758 @@
             border-right: 2px dashed #f2dfd6;
             overflow-y: auto;
         }
-        .sidebar.collapsed { width: 76px; padding: 24px 12px; }
-        .sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-left: 4px; }
-        .sidebar h2 { font-size: 17px; color: #d48383; font-weight: 700; letter-spacing: 1px; white-space: nowrap; overflow: hidden; transition: opacity 0.2s; }
+        .sidebar.collapsed {
+            width: 76px;
+            padding: 24px 12px;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-left: 4px;
+        }
+        .sidebar h2 {
+            font-size: 17px;
+            color: #d48383;
+            font-weight: 700;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
         .sidebar.collapsed h2 { opacity: 0; width: 0; }
         
         .toggle-btn {
-            background: #f4d6cc; border: none; color: #a34848; width: 28px; height: 28px; border-radius: 50%;
-            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s, transform 0.3s; flex-shrink: 0; box-shadow: 0 2px 5px rgba(212, 131, 131, 0.2);
+            background: #f4d6cc;
+            border: none;
+            color: #a34848;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.3s;
+            flex-shrink: 0;
+            box-shadow: 0 2px 5px rgba(212, 131, 131, 0.2);
         }
         .toggle-btn:hover { background: #e2ab9d; color: #fff; transform: scale(1.1); }
         .sidebar.collapsed .toggle-btn { margin: 0 auto; }
 
         .menu-item {
-            padding: 10px 14px; border-radius: 12px; cursor: pointer; color: #8c7368; margin-bottom: 6px;
-            font-size: 14px; transition: all 0.2s ease; background: transparent; font-weight: 500;
-            display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #8c7368;
+            margin-bottom: 6px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            background: transparent;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
         }
         .menu-item:hover { background: #faede6; color: #b56565; }
-        .menu-item.active { background: #f4d6cc; color: #a34848; box-shadow: 0 4px 10px rgba(212, 131, 131, 0.15); font-weight: 600; }
-        .menu-item .arrow { margin-left: auto; transition: transform 0.2s; }
-        .menu-item.collapsed-cat .arrow { transform: rotate(-90deg); }
+        .menu-item.active {
+            background: #f4d6cc;
+            color: #a34848;
+            box-shadow: 0 4px 10px rgba(212, 131, 131, 0.15);
+            font-weight: 600;
+        }
+        .menu-item .arrow {
+            margin-left: auto;
+            transition: transform 0.2s;
+        }
+        .menu-item.collapsed-cat .arrow {
+            transform: rotate(-90deg);
+        }
 
-        .sidebar.collapsed .menu-text, .sidebar.collapsed .sub-menu-container, .sidebar.collapsed .add-note-sub-btn, .sidebar.collapsed .bookmark-sub-container, .sidebar.collapsed .io-sidebar-group { display: none; }
+        .sidebar.collapsed .menu-text,
+        .sidebar.collapsed .sub-menu-container,
+        .sidebar.collapsed .add-note-sub-btn,
+        .sidebar.collapsed .bookmark-sub-container { display: none; }
 
         .sub-menu-container, .bookmark-sub-container {
-            padding-left: 12px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; overflow: hidden; transition: max-height 0.3s ease;
+            padding-left: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
         }
-        .bookmark-sub-container.collapsed, .sub-menu-container.collapsed { max-height: 0 !important; margin-bottom: 0; }
+        .bookmark-sub-container.collapsed, .sub-menu-container.collapsed {
+            max-height: 0 !important;
+            margin-bottom: 0;
+        }
 
         .sub-menu-item {
-            padding: 8px 12px; border-radius: 10px; cursor: pointer; color: #8c7368; font-size: 13px;
-            transition: all 0.2s; background: #fffbf8; border: 1px solid #faede6; display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #8c7368;
+            font-size: 13px;
+            transition: all 0.2s;
+            background: #fffbf8;
+            border: 1px solid #faede6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .sub-menu-item:hover { background: #faede6; color: #b56565; }
-        .sub-menu-item.active { background: #f4d6cc; color: #a34848; font-weight: 600; border-color: #f2dfd6; }
-        .sub-menu-left { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-        .sub-delete-btn { background: none; border: none; color: #c49a9a; font-size: 14px; cursor: pointer; padding: 0 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s; }
+        .sub-menu-item.active {
+            background: #f4d6cc;
+            color: #a34848;
+            font-weight: 600;
+            border-color: #f2dfd6;
+        }
+        .sub-menu-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            justify-content: flex-start;
+        }
+        .sub-delete-btn {
+            background: none;
+            border: none;
+            color: #c49a9a;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0 4px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
         .sub-menu-item:hover .sub-delete-btn { opacity: 1; }
         .sub-delete-btn:hover { background: #f4d6cc; color: #a34848; }
 
         .add-note-sub-btn {
-            background: none; border: 1.5px dashed #ecd5cc; color: #b56565; padding: 6px; border-radius: 8px;
-            font-size: 12px; cursor: pointer; text-align: center; margin-bottom: 8px; transition: all 0.2s;
+            background: none;
+            border: 1.5px dashed #ecd5cc;
+            color: #b56565;
+            padding: 6px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 8px;
+            transition: all 0.2s;
         }
         .add-note-sub-btn:hover { background: #faede6; border-color: #d48383; }
 
-        .io-sidebar-group { margin-top: auto; padding-top: 14px; border-top: 2px dashed #f2dfd6; display: flex; flex-direction: column; gap: 6px; }
-        .io-btn {
-            background: #fffbf8; border: 1.5px solid #ecd5cc; color: #8c7368; padding: 8px 12px; border-radius: 10px;
-            font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; text-align: left; width: 100%;
-        }
-        .io-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
-        .io-btn.danger { border-color: #f4d6cc; color: #b56565; background: #fff5f2; }
-        .io-btn.danger:hover { background: #fde8e2; border-color: #d48383; color: #a34848; }
-
         /* 右侧主内容区 */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
         .header {
-            padding: 20px 36px; display: flex; justify-content: center; align-items: center;
-            background: rgba(253, 251, 247, 0.6); backdrop-filter: blur(4px); position: relative; z-index: 50;
+            padding: 20px 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(253, 251, 247, 0.6);
+            backdrop-filter: blur(4px);
+            position: relative;
+            z-index: 50;
         }
         .search-box {
-            background: #fff; border: 2px solid #ecd5cc; padding: 10px 20px; border-radius: 20px;
-            color: #5c4b43; width: 400px; outline: none; font-size: 14px; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); text-align: center; cursor: pointer;
+            background: #fff;
+            border: 2px solid #ecd5cc;
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: #5c4b43;
+            width: 400px;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            text-align: center;
+            cursor: pointer;
         }
-        .search-box:focus { border-color: #d48383; box-shadow: 0 0 0 4px rgba(212, 131, 131, 0.1); text-align: left; cursor: text; }
+        .search-box:focus {
+            border-color: #d48383;
+            box-shadow: 0 0 0 4px rgba(212, 131, 131, 0.1), inset 0 2px 4px rgba(0,0,0,0.02);
+            text-align: left;
+            cursor: text;
+        }
         
-        .header-right { position: absolute; right: 36px; display: flex; align-items: center; gap: 10px; }
+        .header-right {
+            position: absolute;
+            right: 36px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         .add-card-btn-header {
-            background: #f0ded6; border: 2px solid #ecd5cc; color: #8c4343; padding: 0 14px; height: 38px;
-            border-radius: 19px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            background: #f0ded6;
+            border: 2px solid #ecd5cc;
+            color: #8c4343;
+            padding: 0 14px;
+            height: 38px;
+            border-radius: 19px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(212, 131, 131, 0.1);
         }
         .add-card-btn-header:hover { background: #e2ab9d; color: #fff; }
 
         .add-btn-header {
-            background: #f4d6cc; border: 2px solid #ecd5cc; color: #a34848; width: 38px; height: 38px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+            background: #f4d6cc;
+            border: 2px solid #ecd5cc;
+            color: #a34848;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(212, 131, 131, 0.15);
         }
         .add-btn-header:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
 
-        /* 缩放控制盒样式 */
+        /* 沉浸式独立书签/笔记综合搜索全屏页面 */
+        .search-fullscreen-view {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdfbf7;
+            z-index: 150;
+            display: none;
+            flex-direction: column;
+            padding: 30px 80px;
+            overflow-y: auto;
+        }
+        .search-fullscreen-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .search-back-btn {
+            background: #f4d6cc;
+            border: none;
+            color: #a34848;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .search-back-btn:hover { background: #e2ab9d; color: #fff; }
+        .search-fullscreen-input {
+            flex: 1;
+            background: #fff;
+            border: 2px solid #d48383;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 16px;
+            color: #5c4b43;
+            outline: none;
+            box-shadow: 0 4px 20px rgba(212, 131, 131, 0.15);
+        }
+
+        /* 标签页切换栏 + 清除记录快捷按钮 */
+        .search-tabs-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 2px dashed #f2dfd6;
+            padding-bottom: 14px;
+        }
+        .search-tabs-group {
+            display: flex;
+            gap: 12px;
+        }
+        .search-tab-btn {
+            background: #fff;
+            border: 1.5px solid #ecd5cc;
+            color: #8c7368;
+            padding: 8px 20px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .search-tab-btn:hover {
+            background: #faede6;
+            color: #b56565;
+        }
+        .search-tab-btn.active {
+            background: #f4d6cc;
+            border-color: #d48383;
+            color: #a34848;
+            box-shadow: 0 4px 10px rgba(212, 131, 131, 0.2);
+        }
+        .clear-history-btn {
+            background: #fffbf8;
+            border: 1.5px dashed #d48383;
+            color: #b56565;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-history-btn:hover {
+            background: #faede6;
+            border-color: #a34848;
+        }
+
+        .search-section-panel {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .search-section-panel.active {
+            display: flex;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #b56565;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .search-results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+        .search-results-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .search-results-list::-webkit-scrollbar-track {
+            background: #faede6;
+            border-radius: 10px;
+        }
+        .search-results-list::-webkit-scrollbar-thumb {
+            background: #d48383;
+            border-radius: 10px;
+        }
+
+        .search-result-item {
+            background: #fff;
+            border: 1.5px solid #ecd5cc;
+            padding: 16px 20px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-decoration: none;
+            color: #5c4b43;
+            transition: all 0.2s;
+        }
+        .search-result-item:hover {
+            background: #faede6;
+            border-color: #d48383;
+        }
+        .search-result-title { font-weight: 600; color: #b56565; font-size: 15px; }
+        .search-result-url { font-size: 13px; color: #b5a49c; }
+        .search-result-badge { font-size: 12px; background: #faede6; color: #d48383; padding: 4px 10px; border-radius: 8px; font-weight: 600; }
+
+        /* 极简纯图标缩放栏 */
         .zoom-control-bar {
-            position: absolute; bottom: 30px; right: 30px; background: rgba(255, 248, 243, 0.95);
-            backdrop-filter: blur(4px); border: 2px solid #ecd5cc; padding: 6px; border-radius: 28px;
-            display: flex; align-items: center; gap: 8px; z-index: 100; box-shadow: 0 8px 20px rgba(210, 185, 170, 0.2);
-            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s ease;
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 248, 243, 0.95);
+            backdrop-filter: blur(4px);
+            border: 2px solid #ecd5cc;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            box-shadow: 0 8px 20px rgba(210, 185, 170, 0.2);
         }
-        .zoom-control-bar.collapsed { width: 48px; }
-        .zoom-control-bar:not(.collapsed) { width: 168px; }
-        .zoom-toggle-handle {
-            background: #f4d6cc; border: 1px solid #d48383; color: #a34848; width: 34px; height: 34px; border-radius: 50%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; transition: transform 0.3s ease, background 0.2s;
-        }
-        .zoom-toggle-handle:hover { background: #e2ab9d; color: #fff; }
-        .zoom-control-bar.collapsed .zoom-toggle-handle { transform: rotate(180deg); }
-        .zoom-inner-actions { display: flex; align-items: center; gap: 8px; opacity: 1; transition: opacity 0.25s ease 0.1s; }
-        .zoom-control-bar.collapsed .zoom-inner-actions { opacity: 0; pointer-events: none; width: 0; overflow: hidden; }
         .zoom-icon-btn {
-            background: #fffbf8; border: 1px solid #ecd5cc; color: #a34848; width: 34px; height: 34px; border-radius: 50%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: all 0.2s; user-select: none; flex-shrink: 0;
+            background: #fffbf8;
+            border: 1px solid #ecd5cc;
+            color: #a34848;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+            user-select: none;
         }
         .zoom-icon-btn:hover { background: #f4d6cc; color: #fff; transform: scale(1.08); }
+        
+        .content-canvas {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            padding: 40px;
+        }
 
-        .content-canvas { flex: 1; position: relative; overflow: auto; padding: 40px; }
-        #bookmarkContainer { position: relative; width: 3500px; height: 4000px; transform-origin: 0 0; transition: transform 0.1s ease-out; }
+        #bookmarkContainer {
+            position: relative;
+            width: 3000px;
+            height: 3000px;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
 
-        /* 🌟 优化后的卡片样式：高度自适应，绝不截断超长书签列表 */
+        .notes-page-immersive {
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            padding: 10px 20px 50px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+        }
+        
+        .notes-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 20px;
+            border-radius: 14px;
+            border: 1.5px solid #ecd5cc;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(210, 185, 170, 0.08);
+        }
+        .toolbar-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .tool-btn {
+            background: #fffbf8;
+            border: 1px solid #ecd5cc;
+            color: #8c7368;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .tool-btn:hover { background: #f4d6cc; color: #a34848; }
+
+        .sticker-toggle-btn {
+            background: #f4d6cc;
+            border: 1px solid #d48383;
+            color: #a34848;
+            padding: 6px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
+
+        .sticker-panel {
+            display: none;
+            background: #fff8f3;
+            border: 1.5px dashed #ecd5cc;
+            padding: 14px 18px;
+            border-radius: 14px;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 15px rgba(210, 185, 170, 0.1);
+        }
+        .sticker-item {
+            font-size: 28px;
+            cursor: grab;
+            padding: 4px;
+            border-radius: 8px;
+            transition: transform 0.2s, background 0.2s;
+            user-select: none;
+        }
+        .sticker-item:active { cursor: grabbing; }
+        .sticker-item:hover { transform: scale(1.2); background: #faede6; }
+        
+        .custom-sticker-img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: grab;
+            border: 1px solid #ecd5cc;
+            transition: transform 0.2s;
+        }
+        .custom-sticker-img:active { cursor: grabbing; }
+        .custom-sticker-img:hover { transform: scale(1.15); }
+
+        .custom-sticker-upload {
+            background: #fff;
+            border: 1.5px dashed #d48383;
+            color: #b56565;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .custom-sticker-upload:hover { background: #faede6; }
+
+        .notes-editor-title {
+            font-size: 38px;
+            font-weight: 700;
+            color: #b56565;
+            border: none;
+            outline: none;
+            width: 100%;
+            font-family: inherit;
+            background: transparent;
+            letter-spacing: 1px;
+        }
+
+        .notes-editor-body {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 17px;
+            color: #5c4b43;
+            line-height: 2.2;
+            font-family: inherit;
+            width: 100%;
+            position: relative;
+            min-height: 350px;
+        }
+        .notes-editor-body h1 { font-size: 38px !important; font-weight: 800 !important; color: #b56565 !important; margin: 20px 0 10px 0 !important; line-height: 1.3 !important; }
+        .notes-editor-body h2 { font-size: 30px !important; font-weight: 700 !important; color: #c27878 !important; margin: 16px 0 8px 0 !important; line-height: 1.3 !important; }
+        .notes-editor-body h3 { font-size: 22px !important; font-weight: 700 !important; color: #d48383 !important; margin: 14px 0 6px 0 !important; line-height: 1.3 !important; }
+        .notes-editor-body h4 { font-size: 17px !important; font-weight: 600 !important; color: #8c7368 !important; margin: 12px 0 4px 0 !important; line-height: 1.3 !important; }
+        .notes-editor-body p { margin-bottom: 14px; font-size: 17px; }
+        
+        .notes-editor-body blockquote {
+            background: #faede6;
+            border-left: 4px solid #d48383;
+            padding: 14px 20px;
+            border-radius: 0 12px 12px 0;
+            color: #a34848;
+            margin: 16px 0;
+            font-style: italic;
+        }
+        .notes-editor-body ul, .notes-editor-body ol {
+            padding-left: 24px;
+            margin-bottom: 14px;
+        }
+        .notes-editor-body li {
+            margin-bottom: 6px;
+        }
+
+        .notes-status-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+            font-size: 13px;
+            color: #b5a49c;
+            padding-top: 10px;
+            border-top: 2px dotted #faede6;
+            user-select: none;
+        }
+
+        .note-sticker-placed {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            z-index: 20;
+            display: inline-block;
+            padding: 10px 10px 14px 10px;
+            background: #fff8f3;
+            border: 2px solid #f2dfd6;
+            border-radius: 14px;
+            box-shadow: 0 10px 28px rgba(210, 185, 170, 0.28);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            transform-origin: center center;
+        }
+        .note-sticker-placed.selected {
+            border-color: #d48383;
+            box-shadow: 0 0 0 3px rgba(212, 131, 131, 0.3), 0 10px 28px rgba(210, 185, 170, 0.28);
+            z-index: 50;
+        }
+        .note-sticker-placed img {
+            display: block;
+            border-radius: 8px;
+            pointer-events: none;
+            max-width: none;
+        }
+        .note-sticker-placed span {
+            font-size: 50px;
+            display: block;
+            line-height: 1;
+        }
+        .sticker-resize-handle {
+            position: absolute;
+            right: -6px;
+            bottom: -6px;
+            width: 16px;
+            height: 16px;
+            background: #d48383;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: nwse-resize;
+            display: none;
+            z-index: 30;
+        }
+        .sticker-rotate-handle {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            background: #d48383;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: grab;
+            display: none;
+            z-index: 30;
+        }
+        .sticker-rotate-handle:active { cursor: grabbing; }
+
+        .note-sticker-placed:hover .sticker-resize-handle,
+        .note-sticker-placed.selected .sticker-resize-handle,
+        .note-sticker-placed:hover .sticker-rotate-handle,
+        .note-sticker-placed.selected .sticker-rotate-handle {
+            display: block;
+        }
+
+        .image-preview-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(92, 75, 67, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            cursor: zoom-out;
+        }
+        .image-preview-modal img {
+            max-width: 85vw;
+            max-height: 85vh;
+            border-radius: 16px;
+            border: 4px solid #fff8f3;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            object-fit: contain;
+            background: #fff;
+        }
+
+        .toast-tip {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(50px);
+            background: #fff8f3;
+            border: 2px solid #ecd5cc;
+            color: #a34848;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(210, 185, 170, 0.25);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            z-index: 300;
+        }
+        .toast-tip.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* 手帐卡片样式 */
         .card-group {
-            position: absolute; width: 320px; background: #ffffff; border: 2px solid #f2dfd6; border-radius: 16px;
-            padding: 22px 20px 20px 20px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(210, 185, 170, 0.18);
-            cursor: grab; user-select: none; transition: box-shadow 0.2s;
+            position: absolute;
+            width: 320px;
+            background: #ffffff;
+            border: 2px solid #f2dfd6;
+            border-radius: 16px;
+            padding: 22px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 32px rgba(210, 185, 170, 0.18);
+            cursor: grab;
+            user-select: none;
         }
         .card-group:active { cursor: grabbing; z-index: 120; }
         .card-group::before {
-            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 90px; height: 22px; background: rgba(244, 214, 204, 0.75); border-radius: 3px;
+            content: '';
+            position: absolute;
+            top: -10px; left: 50%;
+            transform: translateX(-50%);
+            width: 90px; height: 22px;
+            background: rgba(244, 214, 204, 0.75);
+            border-radius: 3px;
         }
         .card-group:nth-child(2n)::before { background: rgba(212, 227, 218, 0.75); }
         .card-group:nth-child(3n)::before { background: rgba(238, 221, 207, 0.75); }
 
         .card-group-title {
-            font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+            font-size: 15px; font-weight: 700; margin-bottom: 16px;
+            color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .card-group-right { display: flex; align-items: center; gap: 8px; }
         .card-group-title .count-badge { background: #faede6; color: #d48383; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-        .delete-card-btn { background: none; border: none; color: #c49a9a; cursor: pointer; font-size: 14px; padding: 0 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s; }
+        .delete-card-btn {
+            background: none; border: none; color: #c49a9a; cursor: pointer; font-size: 14px;
+            padding: 0 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s;
+        }
         .card-group:hover .delete-card-btn { opacity: 1; }
         .delete-card-btn:hover { background: #f4d6cc; color: #a34848; }
         
         .bookmark-item {
-            display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; font-size: 14px; background: #fffbf8; border: 1px solid #faede6;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; font-size: 14px;
+            background: #fffbf8; border: 1px solid #faede6;
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
-        .bookmark-link { color: #6b564d; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; font-weight: 500; }
+        .bookmark-link {
+            color: #6b564d; text-decoration: none; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; font-weight: 500;
+        }
         .bookmark-link:hover { color: #a34848; text-decoration: underline; }
         .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
 
         .card-add-btn {
-            margin-top: 8px; background: #fffbf8; border: 2px dashed #ecd5cc; color: #b56565; padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            margin-top: 8px; background: #fffbf8; border: 2px dashed #ecd5cc; color: #b56565;
+            padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
         }
         .card-add-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
         
@@ -191,56 +792,37 @@
         .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 12px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
         .btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 手帐笔记页面专用样式 */
-        .notes-page-immersive {
-            max-width: 900px; margin: 0 auto; width: 100%; height: 100%; background: transparent; padding: 10px 20px 50px 20px; display: flex; flex-direction: column; gap: 16px; position: relative;
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(92, 75, 67, 0.4); backdrop-filter: blur(2px);
+            display: none; justify-content: center; align-items: center; z-index: 200;
         }
-        .notes-toolbar {
-            display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.85); padding: 10px 20px; border-radius: 14px; border: 1.5px solid #ecd5cc; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 15px rgba(210, 185, 170, 0.08);
+        .modal {
+            background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 16px;
+            padding: 24px; width: 420px; box-shadow: 0 12px 30px rgba(210, 185, 170, 0.25);
+            display: flex; flex-direction: column; gap: 16px;
         }
-        .toolbar-group { display: flex; gap: 6px; align-items: center; }
-        .tool-btn {
-            background: #fffbf8; border: 1px solid #ecd5cc; color: #8c7368; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 600; transition: all 0.2s;
-        }
-        .tool-btn:hover { background: #f4d6cc; color: #a34848; }
-        .sticker-toggle-btn {
-            background: #f4d6cc; border: 1px solid #d48383; color: #a34848; padding: 6px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
-        .sticker-panel {
-            display: none; background: #fff8f3; border: 1.5px dashed #ecd5cc; padding: 14px 18px; border-radius: 14px; gap: 14px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(210, 185, 170, 0.1);
-        }
-        .sticker-item { font-size: 28px; cursor: grab; padding: 4px; border-radius: 8px; user-select: none; }
-        .sticker-item:hover { transform: scale(1.2); background: #faede6; }
-        .notes-editor-title { font-size: 38px; font-weight: 700; color: #b56565; border: none; outline: none; width: 100%; background: transparent; letter-spacing: 1px; }
-        .notes-editor-body { flex: 1; border: none; outline: none; font-size: 17px; color: #5c4b43; line-height: 2.2; width: 100%; position: relative; min-height: 350px; }
-        .notes-status-bar { display: flex; justify-content: flex-end; gap: 20px; font-size: 13px; color: #b5a49c; padding-top: 10px; border-top: 2px dotted #faede6; user-select: none; }
-
-        /* 模态框通用样式 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(92, 75, 67, 0.4); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 200; }
-        .modal { background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 16px; padding: 24px; width: 420px; box-shadow: 0 12px 30px rgba(210, 185, 170, 0.25); display: flex; flex-direction: column; gap: 16px; }
         .modal h3 { color: #b56565; font-size: 16px; font-weight: 700; }
-        .modal input { background: #fff; border: 2px solid #ecd5cc; padding: 10px 14px; border-radius: 12px; color: #5c4b43; outline: none; font-size: 14px; width: 100%; }
+        .modal input {
+            background: #fff; border: 2px solid #ecd5cc; padding: 10px 14px;
+            border-radius: 12px; color: #5c4b43; outline: none; font-size: 14px; width: 100%;
+        }
         .category-selector-label { font-size: 13px; color: #8c7368; font-weight: 500; }
         .category-tags { display: flex; flex-wrap: wrap; gap: 8px; max-height: 100px; overflow-y: auto; }
-        .category-tag { background: #fff; border: 1.5px solid #ecd5cc; padding: 6px 12px; border-radius: 10px; font-size: 13px; color: #6b564d; cursor: pointer; }
+        .category-tag {
+            background: #fff; border: 1.5px solid #ecd5cc; padding: 6px 12px; border-radius: 10px; font-size: 13px; color: #6b564d; cursor: pointer;
+        }
         .category-tag.selected { background: #f4d6cc; border-color: #d48383; color: #a34848; font-weight: 600; }
+
         .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
         .modal-btn { padding: 6px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; border: none; font-weight: 500; }
         .modal-btn.cancel { background: #f0ded6; color: #8c7368; }
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
-        
-        .toast-tip {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(50px);
-            background: #fff8f3; border: 2px solid #ecd5cc; color: #a34848; padding: 10px 24px;
-            border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 10px 25px rgba(210, 185, 170, 0.25);
-            transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; z-index: 300;
-        }
-        .toast-tip.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
-<body ondragover="allowGlobalDrag(event)" ondrop="handleGlobalDrop(event)">
+<body>
 
     <!-- 左侧菜单栏 -->
     <div class="sidebar" id="sidebar">
@@ -249,14 +831,6 @@
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         <div id="menuList"></div>
-
-        <div class="io-sidebar-group">
-            <button class="io-btn" onclick="openGitHubModal()" title="绑定私有 GitHub 仓库自动同步数据">⚙️ 绑定 GitHub</button>
-            <button class="io-btn" onclick="triggerImportHtml()" title="选择或拖拽 .html 书签文件导入">📥 导入 HTML 书签</button>
-            <button class="io-btn" onclick="exportHtmlBookmarks()" title="导出当前书签为标准 HTML 文件">📤 导出 HTML 书签</button>
-            <button class="io-btn danger" onclick="confirmRemoveAllData()" title="清空全部书签与笔记">🗑️ 清空所有数据</button>
-            <input type="file" id="importHtmlFile" accept=".html,.htm" style="display: none;" onchange="handleFileSelected(event)">
-        </div>
     </div>
 
     <!-- 右侧主内容区 -->
@@ -264,8 +838,8 @@
         <div class="header" id="topHeader">
             <input type="text" class="search-box" placeholder="点击进入沉浸式书签与笔记综合检索..." id="searchInput" readonly onclick="openSearchFullscreen()">
             <div class="header-right">
-                <button class="add-card-btn-header" onclick="openCardModal()" title="新建空白卡片分类">📁 新建卡片</button>
-                <button class="add-btn-header" onclick="openBookmarkModal()" title="添加新书签">+</button>
+                <button class="add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建空白卡片分类">📁 新建卡片</button>
+                <button class="add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
             </div>
         </div>
         
@@ -274,46 +848,106 @@
             <div id="bookmarkContainer"></div>
         </div>
 
-        <!-- 手帐笔记写作页面 -->
+        <!-- 极简纯图标缩放栏 -->
+        <div class="zoom-control-bar" id="zoomControlBar">
+            <button class="zoom-icon-btn" onclick="adjustZoom(0.1)" title="放大">+</button>
+            <button class="zoom-icon-btn" onclick="adjustZoom(-0.1)" title="缩小" oncontextmenu="handleRightClickZoom(event)">-</button>
+            <button class="zoom-icon-btn" onclick="resetZoom()" title="重置视角">🏠</button>
+        </div>
+
+        <!-- 沉浸式独立综合搜索全屏页面 -->
+        <div class="search-fullscreen-view" id="searchFullscreenView">
+            <div class="search-fullscreen-header">
+                <button class="search-back-btn" onclick="closeSearchFullscreen()">← 返回主空间</button>
+                <input type="text" class="search-fullscreen-input" placeholder="键入关键词实时检索所有书签与笔记..." id="fullscreenSearchInput" oninput="handleFullscreenSearch()" autofocus>
+            </div>
+            
+            <!-- 标签页切换栏（书签板块 / 笔记板块）+ 清除记录快捷按钮 -->
+            <div class="search-tabs-bar">
+                <div class="search-tabs-group">
+                    <button class="search-tab-btn active" id="tabBookmarkBtn" onclick="switchSearchTab('bookmark')">🔖 书签板块</button>
+                    <button class="search-tab-btn" id="tabNoteBtn" onclick="switchSearchTab('note')">📖 笔记板块</button>
+                </div>
+                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除记录</button>
+            </div>
+
+            <!-- 书签板块面板 -->
+            <div class="search-section-panel active" id="panelBookmark">
+                <div class="section-title">📌 检索结果（点击直接访问）</div>
+                <div class="search-results-list" id="searchResultsList"></div>
+            </div>
+
+            <!-- 笔记板块面板 -->
+            <div class="search-section-panel" id="panelNote">
+                <div class="section-title">📖 笔记检索结果（点击跳转到对应页面）</div>
+                <div class="search-results-list" id="notesSearchResultsList"></div>
+            </div>
+        </div>
+
+        <!-- 沉浸式手帐笔记专用写作页面 -->
         <div class="content-canvas" id="notesContainer" style="display: none;">
-            <div class="notes-page-immersive" id="notesPageBody" onclick="handlePageClick(event)">
+            <div class="notes-page-immersive" id="notesPageBody" ondragover="allowDrop(event)" ondrop="handleDropSticker(event)" onclick="handlePageClick(event)">
+                
+                <!-- 富文本工具栏 -->
                 <div class="notes-toolbar">
                     <div class="toolbar-group">
                         <button class="tool-btn" onclick="formatText('H1')">H1</button>
                         <button class="tool-btn" onclick="formatText('H2')">H2</button>
                         <button class="tool-btn" onclick="formatText('H3')">H3</button>
+                        <button class="tool-btn" onclick="formatText('H4')">H4</button>
                         <button class="tool-btn" onclick="formatText('P')">正文</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="tool-btn" onclick="execCmd('bold')" title="加粗"><b>B</b></button>
+                        <button class="tool-btn" onclick="execCmd('italic')" title="斜体"><i>I</i></button>
+                        <button class="tool-btn" onclick="execCmd('underline')" title="下划线"><u>U</u></button>
+                        <button class="tool-btn" onclick="formatBlock('blockquote')" title="引言区块">💬 引言</button>
+                        <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="无序列表">• 列表</button>
+                        <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="有序列表">1. 列表</button>
                     </div>
                     <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 手帐贴纸箱</button>
                 </div>
+
+                <!-- 贴纸抽屉面板 -->
                 <div class="sticker-panel" id="stickerPanel">
-                    <span class="sticker-item" onclick="insertEmoji('🌸')">🌸</span>
-                    <span class="sticker-item" onclick="insertEmoji('⭐')">⭐</span>
-                    <span class="sticker-item" onclick="insertEmoji('💡')">💡</span>
-                    <span class="sticker-item" onclick="insertEmoji('🧸')">🧸</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '🌸')">🌸</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '⭐')">⭐</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '💡')">💡</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '🧸')">🧸</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '☕')">☕</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '📌')">📌</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '🍀')">🍀</span>
+                    <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '🍓')">🍓</span>
+                    
+                    <div id="customStickersContainer" style="display:inline-flex; gap:8px; align-items:center;"></div>
+
+                    <label class="custom-sticker-upload">
+                        + 自定义导入图片
+                        <input type="file" accept="image/*" style="display: none;" onchange="importCustomSticker(event)">
+                    </label>
                 </div>
+
                 <input type="text" class="notes-editor-title" id="noteTitleInput" placeholder="输入页面大标题..." autocomplete="off" oninput="autoSaveState()">
-                <div class="notes-editor-body" id="noteBodyInput" contenteditable="true" placeholder="在这里沉浸式地书写文章内容..." oninput="updateStats(); autoSaveState();"></div>
+
+                <!-- 核心正文编辑区 -->
+                <div class="notes-editor-body" id="noteBodyInput" contenteditable="true" placeholder="在这里沉浸式地书写文章内容（支持从电脑直接拖拽图片到网页贴图）..." onkeydown="handleNoteKeyDown(event)" oninput="updateStats()"></div>
+
+                <!-- 底部字数/行数实时统计状态栏 -->
                 <div class="notes-status-bar">
                     <span id="wordCountText">字数: 0 字</span>
                     <span id="lineCountText">行数: 0 行</span>
                 </div>
             </div>
         </div>
-
-        <!-- 缩放控制条 -->
-        <div class="zoom-control-bar collapsed" id="zoomControlBar">
-            <button class="zoom-toggle-handle" onclick="toggleZoomBox()" title="展开/收起工具盒">📦</button>
-            <div class="zoom-inner-actions">
-                <button class="zoom-icon-btn" onclick="adjustZoom(0.1)" title="放大">+</button>
-                <button class="zoom-icon-btn" onclick="adjustZoom(-0.1)" title="缩小" oncontextmenu="handleRightClickZoom(event)">-</button>
-                <button class="zoom-icon-btn" onclick="resetZoom()" title="重置视角">🏠</button>
-            </div>
-        </div>
     </div>
 
-    <!-- 轻提示 Toast -->
-    <div class="toast-tip" id="toastTip">✨ 数据已同步并保存！</div>
+    <!-- 空格键大图预览模态框 -->
+    <div class="image-preview-modal" id="imagePreviewModal" onclick="closeImagePreview()">
+        <img id="previewModalImg" src="" alt="大图预览">
+    </div>
+
+    <!-- 优雅的轻提示 Toast -->
+    <div class="toast-tip" id="toastTip">✨ 文章已通过 Ctrl+S 自动保存！</div>
 
     <!-- 添加书签弹窗 -->
     <div class="modal-overlay" id="bookmarkModal">
@@ -343,31 +977,14 @@
         </div>
     </div>
 
-    <!-- 新建手帐笔记页面弹窗 -->
+    <!-- 新建笔记页面子文件夹弹窗 -->
     <div class="modal-overlay" id="noteSubModal">
         <div class="modal">
             <h3>📖 创建新笔记页面</h3>
-            <input type="text" id="newNoteTitleInput" placeholder="输入页面名称（例如：读书笔记）" autocomplete="off">
+            <input type="text" id="newNoteTitleInput" placeholder="输入页面名称（例如：读书笔记、灵感收集）" autocomplete="off">
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
                 <button class="modal-btn confirm" onclick="confirmCreateNote()">创建页面</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- GitHub 绑定配置弹窗 -->
-    <div class="modal-overlay" id="gitHubModal">
-        <div class="modal">
-            <h3>⚙️ 绑定私有 GitHub 仓库</h3>
-            <div style="font-size:12px; color:#8c7368; line-height:1.5;">
-                配置后，你创建的卡片、书签和手帐笔记将自动静默同步到你的私有仓库中。
-            </div>
-            <input type="text" id="ghOwnerInput" placeholder="GitHub 用户名 (例如: username)" autocomplete="off">
-            <input type="text" id="ghRepoInput" placeholder="私有仓库名称 (例如: my-markflow-data)" autocomplete="off">
-            <input type="password" id="ghTokenInput" placeholder="Personal Access Token (需要 repo 权限)" autocomplete="off">
-            <div class="modal-buttons">
-                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
-                <button class="modal-btn confirm" onclick="saveGitHubConfig()">保存并同步</button>
             </div>
         </div>
     </div>
@@ -383,22 +1000,28 @@
         ];
 
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
-            { id: 1, title: "🌸 我的手帐日常", content: "<p>欢迎来到手帐空间~</p>" },
-            { id: 2, title: "💡 灵感备忘录", content: "<p>记录每一个闪光的想法...</p>" }
+            { id: 1, title: "🌸 我的手帐日常", content: "<p></p>" },
+            { id: 2, title: "💡 灵感备忘录", content: "<p></p>" }
         ];
-
+        
         let activeNoteId = parseInt(localStorage.getItem('markflow_activeNoteId')) || 1;
         let currentView = localStorage.getItem('markflow_currentView') || 'bookmarks';
-        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
-        let currentCategory = 'all';
-        let canvasZoomScale = 1.0;
-        let sidebarCollapsed = false;
+        let currentCategory = localStorage.getItem('markflow_currentCategory') || 'all';
+
+        let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
+        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {
+            "待办": { x: 50, y: 40, rotate: -1.5 },
+            "导航精品": { x: 410, y: 60, rotate: 2.2 },
+            "投资": { x: 770, y: 30, rotate: -0.6 },
+            "系统": { x: 120, y: 400, rotate: 1.5 }
+        };
+
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
-
-        let githubConfig = JSON.parse(localStorage.getItem('markflow_gh_config')) || {
-            owner: '', repo: '', path: 'markflow_data.json', token: ''
-        };
+        let selectedGroup = '';
+        let selectedStickerElement = null;
+        let canvasZoomScale = 1.0;
+        let currentSearchTab = 'bookmark';
 
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
@@ -406,37 +1029,28 @@
             localStorage.setItem('markflow_notesList', JSON.stringify(notesList));
             localStorage.setItem('markflow_activeNoteId', activeNoteId);
             localStorage.setItem('markflow_currentView', currentView);
+            localStorage.setItem('markflow_currentCategory', currentCategory);
+            localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
-
-            if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
-                saveToGitHub();
-            }
         }
 
-        function toggleZoomBox() {
-            document.getElementById('zoomControlBar').classList.toggle('collapsed');
-        }
-
-        function confirmRemoveAllData() {
-            const confirmDelete = confirm("⚠️ 【危险操作】您正在尝试清空全部书签、卡片与手帐笔记！是否确认彻底删除？");
-            if (confirmDelete) {
-                categories = [];
-                bookmarks = [];
-                notesList = [{ id: 1, title: "✨ 空白手帐页", content: "<p></p>" }];
-                activeNoteId = 1;
-                cardPositions = {};
-                
-                localStorage.clear();
-                persistState();
-                
-                switchView('bookmarks', 'all', null);
-                alert("🧹 数据已全部安全清空！");
+        function autoSaveState() {
+            if (currentView === 'notes') {
+                const title = document.getElementById('noteTitleInput').value.trim() || '无标题页面';
+                const content = document.getElementById('noteBodyInput').innerHTML;
+                const note = notesList.find(n => n.id === activeNoteId);
+                if (note) {
+                    note.title = title;
+                    note.content = content;
+                    persistState();
+                    updateSidebar();
+                }
             }
         }
 
         function toggleSidebar() {
-            sidebarCollapsed = !sidebarCollapsed;
-            document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
         }
 
         function toggleBookmarkMenu(e) {
@@ -456,23 +1070,406 @@
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        function insertEmoji(emoji) {
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(emoji));
-            autoSaveState();
+        /* 搜索全屏及标签页切换交互 */
+        function openSearchFullscreen() {
+            const view = document.getElementById('searchFullscreenView');
+            view.style.display = 'flex';
+            renderFullscreenResults('');
+            renderNotesSearchResults('');
+            document.getElementById('fullscreenSearchInput').focus();
+        }
+
+        function closeSearchFullscreen() {
+            document.getElementById('searchFullscreenView').style.display = 'none';
+            document.getElementById('searchInput').value = '';
+        }
+
+        function switchSearchTab(tabName) {
+            currentSearchTab = tabName;
+            const btnBm = document.getElementById('tabBookmarkBtn');
+            const btnNote = document.getElementById('tabNoteBtn');
+            const panelBm = document.getElementById('panelBookmark');
+            const panelNote = document.getElementById('panelNote');
+
+            if (tabName === 'bookmark') {
+                btnBm.classList.add('active');
+                btnNote.classList.remove('active');
+                panelBm.classList.add('active');
+                panelNote.classList.remove('active');
+            } else {
+                btnNote.classList.add('active');
+                btnBm.classList.remove('active');
+                panelNote.classList.add('active');
+                panelBm.classList.remove('active');
+            }
+        }
+
+        function clearSearchHistoryInput() {
+            document.getElementById('fullscreenSearchInput').value = '';
+            handleFullscreenSearch();
+        }
+
+        function handleFullscreenSearch() {
+            const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
+            renderFullscreenResults(keyword);
+            renderNotesSearchResults(keyword);
+        }
+
+        function renderFullscreenResults(keyword) {
+            const listContainer = document.getElementById('searchResultsList');
+            listContainer.innerHTML = '';
+
+            const filtered = bookmarks.filter(b => b.title.toLowerCase().includes(keyword) || b.group.toLowerCase().includes(keyword) || b.url.toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `<div class="empty-card-tip">没有找到匹配的书签哦~</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                listContainer.innerHTML += `
+                    <a href="${item.url}" class="search-result-item" target="_blank">
+                        <div>
+                            <div class="search-result-title">${item.title}</div>
+                            <div class="search-result-url">${item.url}</div>
+                        </div>
+                        <span class="search-result-badge">[${item.group}] 直接访问 →</span>
+                    </a>
+                `;
+            });
+        }
+
+        function renderNotesSearchResults(keyword) {
+            const listContainer = document.getElementById('notesSearchResultsList');
+            listContainer.innerHTML = '';
+
+            const filtered = notesList.filter(n => n.title.toLowerCase().includes(keyword) || (n.content && n.content.toLowerCase().includes(keyword)));
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `<div class="empty-card-tip">没有找到匹配的笔记哦~</div>`;
+                return;
+            }
+
+            filtered.forEach(note => {
+                listContainer.innerHTML += `
+                    <div class="search-result-item" onclick="jumpToNote(${note.id})">
+                        <div>
+                            <div class="search-result-title">${note.title}</div>
+                            <div class="search-result-url">点击跳转至该手帐笔记页面</div>
+                        </div>
+                        <span class="search-result-badge">打开笔记 ↗</span>
+                    </div>
+                `;
+            });
+        }
+
+        function jumpToNote(noteId) {
+            closeSearchFullscreen();
+            switchView('notes', noteId);
+        }
+
+        function adjustZoom(delta) {
+            canvasZoomScale = Math.min(2.0, Math.max(0.3, canvasZoomScale + delta));
+            applyZoom();
+        }
+
+        function handleRightClickZoom(e) {
+            e.preventDefault();
+            adjustZoom(-0.1);
+        }
+
+        function resetZoom() {
+            canvasZoomScale = 1.0;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const container = document.getElementById('bookmarkContainer');
+            container.style.transform = `scale(${canvasZoomScale})`;
+        }
+
+        function dragSticker(e, data) {
+            e.dataTransfer.setData('text/plain', data);
+        }
+
+        function dragCustomSticker(e, imgSrc) {
+            e.dataTransfer.setData('image/plain', imgSrc);
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        function handleDropSticker(e) {
+            e.preventDefault();
+            const pageRect = document.getElementById('notesPageBody').getBoundingClientRect();
+            const x = e.clientX - pageRect.left;
+            const y = e.clientY - pageRect.top;
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                    const file = e.dataTransfer.files[i];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            createPlacedSticker(event.target.result, 'image', x + (i * 20), y + (i * 20));
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+                return;
+            }
+
+            const textData = e.dataTransfer.getData('text/plain');
+            const imgData = e.dataTransfer.getData('image/plain');
+
+            if (textData) {
+                createPlacedSticker(textData, 'text', x, y);
+            } else if (imgData) {
+                createPlacedSticker(imgData, 'image', x, y);
+            }
+        }
+
+        function createPlacedSticker(content, type, x, y, rotateDeg, customWidth) {
+            const span = document.createElement('span');
+            span.className = 'note-sticker-placed';
+            span.style.left = x + 'px';
+            span.style.top = y + 'px';
+            if (rotateDeg) {
+                span.style.transform = `rotate(${rotateDeg}deg)`;
+            }
+
+            if (type === 'text') {
+                span.innerHTML = `<span>${content}</span>`;
+                makeElementInteractive(span);
+                document.getElementById('notesPageBody').appendChild(span);
+                selectSticker(span);
+            } else {
+                const imgObj = new Image();
+                imgObj.src = content;
+                imgObj.onload = function() {
+                    let w = customWidth || imgObj.naturalWidth;
+                    let h = customWidth ? Math.round(customWidth * (imgObj.naturalHeight / imgObj.naturalWidth)) : imgObj.naturalHeight;
+                    const maxBase = 220;
+                    if (!customWidth) {
+                        if (w > h) {
+                            h = Math.round(h * (maxBase / w));
+                            w = maxBase;
+                        } else {
+                            w = Math.round(w * (maxBase / h));
+                            h = maxBase;
+                        }
+                    }
+
+                    span.innerHTML = `
+                        <img src="${content}" alt="sticker" style="width:${w}px; height:${h}px;">
+                        <div class="sticker-rotate-handle" onmousedown="initRotate(event, this)"></div>
+                        <div class="sticker-resize-handle" onmousedown="initResize(event, this)"></div>
+                    `;
+                    makeElementInteractive(span);
+                    document.getElementById('notesPageBody').appendChild(span);
+                    selectSticker(span);
+                };
+            }
+        }
+
+        function importCustomSticker(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    customStickers.push(e.target.result);
+                    persistState();
+                    renderCustomStickers();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderCustomStickers() {
+            const container = document.getElementById('customStickersContainer');
+            container.innerHTML = '';
+            customStickers.forEach((imgSrc) => {
+                const img = document.createElement('img');
+                img.className = 'custom-sticker-img';
+                img.src = imgSrc;
+                img.draggable = true;
+                img.ondragstart = (e) => dragCustomSticker(e, imgSrc);
+                container.appendChild(img);
+            });
+        }
+
+        function handlePageClick(e) {
+            if (!e.target.closest('.note-sticker-placed')) {
+                clearStickerSelection();
+            }
+        }
+
+        function selectSticker(elm) {
+            clearStickerSelection();
+            selectedStickerElement = elm;
+            elm.classList.add('selected');
+        }
+
+        function clearStickerSelection() {
+            document.querySelectorAll('.note-sticker-placed').forEach(el => el.classList.remove('selected'));
+            selectedStickerElement = null;
+        }
+
+        function initResize(e, handle) {
+            e.stopPropagation();
+            const sticker = handle.parentElement;
+            selectSticker(sticker);
+            const img = sticker.querySelector('img');
+            const startX = e.clientX;
+            const startWidth = img.offsetWidth;
+
+            function onMouseMove(moveEvent) {
+                const currentX = moveEvent.clientX;
+                const newWidth = Math.max(60, startWidth + (currentX - startX));
+                const ratio = img.naturalHeight / img.naturalWidth;
+                img.style.width = newWidth + 'px';
+                img.style.height = Math.round(newWidth * ratio) + 'px';
+            }
+
+            function onMouseUp() {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                autoSaveState();
+            }
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+        function initRotate(e, handle) {
+            e.stopPropagation();
+            const sticker = handle.parentElement;
+            selectSticker(sticker);
+            const rect = sticker.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            function onMouseMove(moveEvent) {
+                const radians = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+                let degree = (radians * (180 / Math.PI)) + 90;
+                sticker.style.transform = `rotate(${Math.round(degree)}deg)`;
+            }
+
+            function onMouseUp() {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                autoSaveState();
+            }
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+        function makeElementInteractive(elm) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            let longPressTimer = null;
+            let isDragging = false;
+
+            elm.onmousedown = function(e) {
+                if (e.target.classList.contains('sticker-resize-handle') || e.target.classList.contains('sticker-rotate-handle')) return;
+                e.preventDefault();
+                selectSticker(elm);
+                isDragging = false;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+
+                longPressTimer = setTimeout(() => {
+                    if (!isDragging) {
+                        if (confirm('✨ 要撕掉这个小贴纸吗？')) {
+                            elm.remove();
+                            if (selectedStickerElement === elm) selectedStickerElement = null;
+                            autoSaveState();
+                        }
+                    }
+                }, 600);
+
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            };
+
+            function elementDrag(e) {
+                e.preventDefault();
+                const moveDist = Math.abs(e.clientX - pos3) + Math.abs(e.clientY - pos4);
+                if (moveDist > 4) {
+                    isDragging = true;
+                    if (longPressTimer) clearTimeout(longPressTimer);
+                }
+
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elm.style.top = (elm.offsetTop - pos2) + "px";
+                elm.style.left = (elm.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                document.onmouseup = null;
+                document.onmousemove = null;
+                autoSaveState();
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.code === 'Space') {
+                const activeTag = document.activeElement.tagName.toLowerCase();
+                if (activeTag !== 'input' && activeTag !== 'textarea' && !activeTag.isContentEditable) {
+                    if (selectedStickerElement) {
+                        const img = selectedStickerElement.querySelector('img');
+                        if (img) {
+                            e.preventDefault();
+                            openImagePreview(img.src);
+                        }
+                    }
+                }
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                if (currentView === 'notes') {
+                    e.preventDefault();
+                    saveActiveNote();
+                }
+            }
+
+            const activeTag = document.activeElement.tagName.toLowerCase();
+            if ((e.key === '+' || e.key === '=') && activeTag !== 'input' && activeTag !== 'textarea' && !activeTag.isContentEditable) {
+                e.preventDefault();
+                if (currentView === 'bookmarks') openBookmarkModal();
+            }
+        });
+
+        function openImagePreview(src) {
+            const modal = document.getElementById('imagePreviewModal');
+            const modalImg = document.getElementById('previewModalImg');
+            modalImg.src = src;
+            modal.style.display = 'flex';
+        }
+
+        function closeImagePreview() {
+            document.getElementById('imagePreviewModal').style.display = 'none';
+        }
+
+        function getAllCategories() {
+            const set = new Set(categories);
+            bookmarks.forEach(b => set.add(b.group));
+            return Array.from(set);
         }
 
         function updateSidebar() {
             const menuList = document.getElementById('menuList');
             const cats = getAllCategories();
-            const isAllActive = (currentView === 'bookmarks' && currentCategory === 'all');
-            const isNotesActive = (currentView === 'notes');
+            
+            const isAllBookmarksActive = (currentView === 'bookmarks' && currentCategory === 'all');
 
             let html = `
-                <div class="menu-item ${isAllActive ? 'active' : ''} ${bookmarkMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('bookmarks', 'all', event)">
+                <div class="menu-item ${isAllBookmarksActive ? 'active' : ''} ${bookmarkMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('bookmarks', 'all', event)">
                     <span>🌐 <span class="menu-text">全部书签</span></span>
                     <span class="arrow" onclick="toggleBookmarkMenu(event)">▾</span>
                 </div>
@@ -488,8 +1485,10 @@
                     </div>
                 `;
             });
+
             html += `</div>`;
 
+            const isNotesActive = (currentView === 'notes');
             html += `
                 <div class="menu-item ${isNotesActive ? 'active' : ''} ${notesMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('notes', ${notesList.length > 0 ? notesList[0].id : null}, event)">
                     <span>📖 <span class="menu-text">手帐笔记</span></span>
@@ -499,11 +1498,11 @@
             `;
 
             notesList.forEach(note => {
-                const isActiveNote = (currentView === 'notes' && activeNoteId === note.id);
+                const isActive = (currentView === 'notes' && activeNoteId === note.id) ? 'active' : '';
                 html += `
-                    <div class="sub-menu-item ${isActiveNote ? 'active' : ''}" onclick="switchView('notes', ${note.id}, event)">
+                    <div class="sub-menu-item ${isActive}" onclick="switchView('notes', ${note.id}, event)">
                         <div class="sub-menu-left">📄 <span class="menu-text">${note.title}</span></div>
-                        <button class="sub-delete-btn" onclick="deleteNote(${note.id}, event)" title="删除笔记">×</button>
+                        <button class="sub-delete-btn" onclick="deleteNote(${note.id}, event)" title="删除页面">×</button>
                     </div>
                 `;
             });
@@ -512,38 +1511,45 @@
                     <button class="add-note-sub-btn" onclick="openNewNoteModal()">+ 新建页面</button>
                 </div>
             `;
-
+            
             menuList.innerHTML = html;
         }
 
         function switchView(view, targetId, event) {
-            if (event) event.stopPropagation();
+            if(event) event.stopPropagation();
             currentView = view;
-            const canvasWrapper = document.getElementById('canvasScrollWrapper');
+
+            const bmContainer = document.getElementById('bookmarkContainer');
             const notesContainer = document.getElementById('notesContainer');
             const topHeader = document.getElementById('topHeader');
             const zoomBar = document.getElementById('zoomControlBar');
 
             if (view === 'bookmarks') {
-                if (targetId !== null) currentCategory = targetId;
-                canvasWrapper.style.display = 'block';
+                if(targetId !== null) currentCategory = targetId;
+                document.getElementById('canvasScrollWrapper').style.display = 'block';
                 notesContainer.style.display = 'none';
                 topHeader.style.display = 'flex';
                 zoomBar.style.display = 'flex';
                 renderBookmarks(bookmarks);
             } else {
-                canvasWrapper.style.display = 'none';
+                document.getElementById('canvasScrollWrapper').style.display = 'none';
                 notesContainer.style.display = 'flex';
                 topHeader.style.display = 'none';
                 zoomBar.style.display = 'none';
-
-                if (targetId !== null) activeNoteId = targetId;
-                else if (notesList.length > 0) activeNoteId = notesList[0].id;
+                
+                if (targetId !== null) {
+                    activeNoteId = targetId;
+                } else if (notesList.length > 0) {
+                    activeNoteId = notesList[0].id;
+                }
 
                 const currentNoteObj = notesList.find(n => n.id === activeNoteId);
                 if (currentNoteObj) {
                     document.getElementById('noteTitleInput').value = currentNoteObj.title;
                     document.getElementById('noteBodyInput').innerHTML = currentNoteObj.content || '<p></p>';
+                } else {
+                    document.getElementById('noteTitleInput').value = '';
+                    document.getElementById('noteBodyInput').innerHTML = '<p></p>';
                 }
                 updateStats();
             }
@@ -551,38 +1557,76 @@
             updateSidebar();
         }
 
-        function autoSaveState() {
-            if (currentView === 'notes') {
-                const title = document.getElementById('noteTitleInput').value.trim() || '无标题页面';
-                const content = document.getElementById('noteBodyInput').innerHTML;
-                const note = notesList.find(n => n.id === activeNoteId);
-                if (note) {
-                    note.title = title;
-                    note.content = content;
-                    persistState();
-                    updateSidebar();
-                }
+        function formatText(tag) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            if (tag === 'P') {
+                document.execCommand('formatBlock', false, '<p>');
+            } else {
+                document.execCommand('formatBlock', false, `<${tag}>`);
             }
+            autoSaveState();
+        }
+
+        function execCmd(command) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            document.execCommand(command, false, null);
+            updateStats();
+            autoSaveState();
+        }
+
+        function formatBlock(tag) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            document.execCommand('formatBlock', false, `<${tag}>`);
+            updateStats();
+            autoSaveState();
+        }
+
+        function handleNoteKeyDown(e) {
+            if (e.key === 'Enter') {
+                document.execCommand('insertParagraph', false, null);
+                e.preventDefault();
+            }
+            updateStats();
+            autoSaveState();
         }
 
         function updateStats() {
-            const text = document.getElementById('noteBodyInput').innerText || '';
-            document.getElementById('wordCountText').innerText = `字数: ${text.replace(/[\n\r\s]/g, '').length} 字`;
-            document.getElementById('lineCountText').innerText = `行数: ${text.split(/\r\n|\r|\n/).length} 行`;
+            const editor = document.getElementById('noteBodyInput');
+            const text = editor.innerText || '';
+            const charCount = text.replace(/[\n\r\s]/g, '').length;
+            const lineCount = text.split(/\r\n|\r|\n/).length;
+            
+            document.getElementById('wordCountText').innerText = `字数: ${charCount} 字`;
+            document.getElementById('lineCountText').innerText = `行数: ${lineCount} 行`;
         }
 
-        function formatText(tag) {
-            document.getElementById('noteBodyInput').focus();
-            document.execCommand('formatBlock', false, tag === 'P' ? '<p>' : `<${tag}>`);
+        function saveActiveNote() {
             autoSaveState();
+            showToast();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toastTip');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
         }
 
         function deleteNote(id, event) {
             event.stopPropagation();
-            if (notesList.length <= 1) { alert('至少需要保留一个手帐页面。'); return; }
+            if (notesList.length <= 1) {
+                alert('留一个页面吧~ 至少需要保留一个手帐页面。');
+                return;
+            }
             if (confirm('确定要删除这个手帐页面吗？')) {
                 notesList = notesList.filter(n => n.id !== id);
-                if (activeNoteId === id) activeNoteId = notesList[0].id;
+                if (activeNoteId === id) {
+                    activeNoteId = notesList[0].id;
+                }
                 persistState();
                 switchView('notes', activeNoteId);
             }
@@ -596,7 +1640,10 @@
 
         function confirmCreateNote() {
             const title = document.getElementById('newNoteTitleInput').value.trim();
-            if (!title) { alert('请输入页面名称哦~'); return; }
+            if (!title) {
+                alert('请输入页面名称哦~');
+                return;
+            }
             const newId = notesList.length > 0 ? Math.max(...notesList.map(n => n.id)) + 1 : 1;
             notesList.push({ id: newId, title: title, content: `<p></p>` });
             closeModal();
@@ -604,58 +1651,22 @@
             switchView('notes', newId);
         }
 
-        // 🌟 核心防重叠排版算法：多列高度追踪网格 (Column-based Masonry Flow)
-        function computeLayoutPositions(catsToRender, data) {
-            const colWidth = 360;  // 每列占用的宽度（含间距）
-            const colCount = 3;    // 总共3列
-            const colHeights = [60, 60, 60]; // 记录每一列当前最高的高度
-            
-            catsToRender.forEach((groupName) => {
-                const items = data.filter(b => b.group === groupName);
-                // 根据书签数量计算卡片动态高度：标题(60) + 每个书签约(42) + 添加按钮(50) + 边距(40)
-                const estimatedHeight = 150 + items.length * 42;
-
-                // 寻找当前高度最小的那一列，将卡片塞进去，保证绝对不重叠
-                let minColIndex = 0;
-                for (let i = 1; i < colCount; i++) {
-                    if (colHeights[i] < colHeights[minColIndex]) {
-                        minColIndex = i;
-                    }
-                }
-
-                // 生成哈希轻微随机感（不写死，但固定位置）
-                let hash = 0;
-                for (let i = 0; i < groupName.length; i++) {
-                    hash = groupName.charCodeAt(i) + ((hash << 5) - hash);
-                }
-                const randXOffset = (Math.abs(hash) % 40) - 20;
-                const randRotate = ((hash % 20) / 10);
-
-                const x = 60 + minColIndex * colWidth + randXOffset;
-                const y = colHeights[minColIndex];
-
-                cardPositions[groupName] = {
-                    x: x,
-                    y: y,
-                    rotate: randRotate,
-                    height: estimatedHeight
-                };
-
-                // 更新该列的总高度（加上当前卡片高度及行间距 50px）
-                colHeights[minColIndex] += estimatedHeight + 50;
-            });
-        }
-
         function renderBookmarks(data) {
             const container = document.getElementById('bookmarkContainer');
             container.innerHTML = '';
+
             const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
             
-            // 每次渲染前，动态计算防重叠布局网格
-            computeLayoutPositions(catsToRender, data);
-
-            catsToRender.forEach((groupName) => {
+            catsToRender.forEach((groupName, index) => {
                 const items = data.filter(b => b.group === groupName);
+                
+                if (!cardPositions[groupName]) {
+                    cardPositions[groupName] = {
+                        x: 100 + (index % 3) * 380 + (Math.random() * 30 - 15),
+                        y: 100 + Math.floor(index / 3) * 380 + (Math.random() * 30 - 15),
+                        rotate: (Math.random() * 4 - 2)
+                    };
+                }
                 const pos = cardPositions[groupName];
 
                 const cardDiv = document.createElement('div');
@@ -671,7 +1682,7 @@
                         <span>${groupName}</span>
                         <div class="card-group-right">
                             <span class="count-badge">${items.length}</span>
-                            <button class="delete-card-btn" onclick="deleteCategory('${groupName}', event)" title="删除分类">×</button>
+                            <button class="delete-card-btn" onclick="deleteCategory('${groupName}', event)" title="删除该卡片分类">×</button>
                         </div>
                     </div>
                 `;
@@ -691,7 +1702,12 @@
                     });
                 }
 
-                cardHtml += `<div class="card-add-btn" onclick="openBookmarkModalForGroup('${groupName}')"><span>+ 添加网页</span></div>`;
+                cardHtml += `
+                    <div class="card-add-btn" onclick="openBookmarkModalForGroup('${groupName}')">
+                        <span>+ 添加网页</span>
+                    </div>
+                `;
+                
                 cardDiv.innerHTML = cardHtml;
                 container.appendChild(cardDiv);
             });
@@ -699,31 +1715,37 @@
             updateSidebar();
         }
 
-        function getAllCategories() {
-            const set = new Set(categories);
-            bookmarks.forEach(b => set.add(b.group));
-            return Array.from(set);
-        }
-
         function initDrag(cardElement, groupName) {
-            let isDragging = false, startX, startY;
+            let isDragging = false;
+            let startX, startY;
+
             cardElement.addEventListener('mousedown', (e) => {
-                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.bookmark-item') || e.target.closest('.card-add-btn')) return;
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.bookmark-item') || e.target.closest('.card-add-btn')) {
+                    return;
+                }
                 isDragging = true;
                 startX = e.clientX - cardPositions[groupName].x;
                 startY = e.clientY - cardPositions[groupName].y;
                 cardElement.style.zIndex = 150;
                 e.preventDefault();
             });
+
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
-                cardPositions[groupName].x = e.clientX - startX;
-                cardPositions[groupName].y = e.clientY - startY;
-                cardElement.style.left = cardPositions[groupName].x + 'px';
-                cardElement.style.top = cardPositions[groupName].y + 'px';
+                const newX = e.clientX - startX;
+                const newY = e.clientY - startY;
+                cardPositions[groupName].x = newX;
+                cardPositions[groupName].y = newY;
+                cardElement.style.left = newX + 'px';
+                cardElement.style.top = newY + 'px';
             });
+
             window.addEventListener('mouseup', () => {
-                if (isDragging) { isDragging = false; cardElement.style.zIndex = 1; persistState(); }
+                if (isDragging) {
+                    isDragging = false;
+                    cardElement.style.zIndex = 1;
+                    persistState();
+                }
             });
         }
 
@@ -735,14 +1757,20 @@
 
         function deleteCategory(groupName, event) {
             if(event) event.stopPropagation();
-            if (confirm(`确定要删除“${groupName}”这个分类吗？`)) {
+            if (confirm(`确定要删除“${groupName}”这个分类吗？里面的书签也会被移除哦~`)) {
                 categories = categories.filter(c => c !== groupName);
                 bookmarks = bookmarks.filter(b => b.group !== groupName);
                 delete cardPositions[groupName];
-                if (currentCategory === groupName) currentCategory = 'all';
+                if (currentCategory === groupName) {
+                    currentCategory = 'all';
+                }
                 persistState();
                 renderBookmarks(bookmarks);
             }
+        }
+
+        function handleSearch() {
+            openSearchFullscreen();
         }
 
         function openCardModal() {
@@ -752,7 +1780,8 @@
         }
 
         function openBookmarkModal() {
-            openBookmarkModalForGroup(currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认'));
+            const targetCat = currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认');
+            openBookmarkModalForGroup(targetCat);
         }
 
         function openBookmarkModalForGroup(groupName) {
@@ -768,20 +1797,20 @@
             document.getElementById('bookmarkModal').style.display = 'none';
             document.getElementById('cardModal').style.display = 'none';
             document.getElementById('noteSubModal').style.display = 'none';
-            document.getElementById('gitHubModal').style.display = 'none';
         }
 
         function renderCategoryTags(defaultCat = '') {
             const container = document.getElementById('categoryTagsContainer');
+            const cats = getAllCategories();
             let html = '';
-            getAllCategories().forEach(cat => {
-                html += `<div class="category-tag ${cat === defaultCat ? 'selected' : ''}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
+            cats.forEach(cat => {
+                const isSelected = (cat === defaultCat) ? 'selected' : '';
+                html += `<div class="category-tag ${isSelected}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
             });
             container.innerHTML = html;
             selectedGroup = defaultCat;
         }
 
-        let selectedGroup = '';
         function selectTag(cat, element) {
             document.querySelectorAll('.category-tag').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
@@ -791,9 +1820,17 @@
 
         function saveNewCardGroup() {
             const groupName = document.getElementById('newCardGroupName').value.trim();
-            if (!groupName) { alert('请输入卡片分类名称哦~'); return; }
+            if (!groupName) {
+                alert('请输入卡片分类名称哦~');
+                return;
+            }
             if (!categories.includes(groupName)) {
                 categories.push(groupName);
+                cardPositions[groupName] = {
+                    x: 100 + Math.random() * 200,
+                    y: 100 + Math.random() * 200,
+                    rotate: (Math.random() * 4 - 2)
+                };
             }
             closeModal();
             persistState();
@@ -803,140 +1840,28 @@
         function saveBookmark() {
             const title = document.getElementById('bookmarkTitle').value.trim();
             const url = document.getElementById('bookmarkUrl').value.trim();
-            const group = document.getElementById('bookmarkGroup').value.trim() || selectedGroup || '未分类';
-            if (!title || !url) { alert('请填写完整的网站名称和链接哦~'); return; }
-            if (!categories.includes(group) && !getAllCategories().includes(group)) categories.push(group);
+            const typedGroup = document.getElementById('bookmarkGroup').value.trim();
+            const group = typedGroup || selectedGroup || '未分类';
+
+            if (!title || !url) {
+                alert('请填写完整的网站名称和链接哦~');
+                return;
+            }
+
+            if (!categories.includes(group) && !getAllCategories().includes(group)) {
+                categories.push(group);
+            }
 
             const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
             bookmarks.push({ id: newId, group, title, url });
+
             closeModal();
             persistState();
             renderBookmarks(bookmarks);
         }
 
-        // HTML 书签导入导出
-        function triggerImportHtml() { document.getElementById('importHtmlFile').click(); }
-        function allowGlobalDrag(e) { e.preventDefault(); }
-        function handleGlobalDrop(e) {
-            e.preventDefault();
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                const file = e.dataTransfer.files[0];
-                if (file.name.endsWith('.html') || file.name.endsWith('.htm')) parseAndImportHtmlFile(file);
-            }
-        }
-        function handleFileSelected(event) {
-            const file = event.target.files[0];
-            if (file) parseAndImportHtmlFile(file);
-            event.target.value = '';
-        }
-        function parseAndImportHtmlFile(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(e.target.result, 'text/html');
-                let importedCount = 0;
-                let currentFolder = '导入书签';
-                doc.querySelectorAll('h3, a').forEach(el => {
-                    if (el.tagName === 'H3') {
-                        currentFolder = el.textContent.trim() || '导入文件夹';
-                        if (!categories.includes(currentFolder)) categories.push(currentFolder);
-                    } else if (el.tagName === 'A') {
-                        const title = el.textContent.trim() || el.href;
-                        const url = el.href;
-                        if (url && url.startsWith('http') && !bookmarks.some(b => b.url === url)) {
-                            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
-                            bookmarks.push({ id: newId, group: currentFolder, title: title, url: url });
-                            importedCount++;
-                        }
-                    }
-                });
-                if (importedCount > 0) {
-                    persistState();
-                    renderBookmarks(bookmarks);
-                    alert(`✨ 成功导入 ${importedCount} 个书签！`);
-                }
-            };
-            reader.readAsText(file);
-        }
-        function exportHtmlBookmarks() {
-            let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
-            getAllCategories().forEach(cat => {
-                html += `    <DT><H3> ${cat} </H3>\n    <DL><p>\n`;
-                bookmarks.filter(b => b.group === cat).forEach(item => {
-                    html += `        <DT><A HREF="${item.url}">${item.title}</A>\n`;
-                });
-                html += `    </DL><p>\n`;
-            });
-            html += `</DL><p>\n`;
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `MarkFlow_Bookmarks_${new Date().toISOString().slice(0,10)}.html`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-        }
-
-        // GitHub 自动同步
-        function openGitHubModal() {
-            document.getElementById('gitHubModal').style.display = 'flex';
-            document.getElementById('ghOwnerInput').value = githubConfig.owner;
-            document.getElementById('ghRepoInput').value = githubConfig.repo;
-            document.getElementById('ghTokenInput').value = githubConfig.token;
-        }
-        function saveGitHubConfig() {
-            githubConfig.owner = document.getElementById('ghOwnerInput').value.trim();
-            githubConfig.repo = document.getElementById('ghRepoInput').value.trim();
-            githubConfig.token = document.getElementById('ghTokenInput').value.trim();
-            localStorage.setItem('markflow_gh_config', JSON.stringify(githubConfig));
-            closeModal();
-            loadFromGitHub();
-            alert("✨ GitHub 仓库配置已保存！");
-        }
-        async function loadFromGitHub() {
-            if (!githubConfig.token || !githubConfig.owner || !githubConfig.repo) return;
-            try {
-                const url = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
-                const response = await fetch(url, { headers: { 'Authorization': `Bearer ${githubConfig.token}` } });
-                if (response.ok) {
-                    const data = await response.json();
-                    const remoteData = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
-                    if (remoteData.categories) categories = remoteData.categories;
-                    if (remoteData.bookmarks) bookmarks = remoteData.bookmarks;
-                    if (remoteData.notesList) notesList = remoteData.notesList;
-                    if (remoteData.cardPositions) cardPositions = remoteData.cardPositions;
-                    persistState();
-                    switchView(currentView, currentView === 'notes' ? activeNoteId : currentCategory);
-                }
-            } catch (e) { console.error("GitHub 同步失败", e); }
-        }
-        async function saveToGitHub() {
-            if (!githubConfig.token || !githubConfig.owner || !githubConfig.repo) return;
-            const url = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
-            try {
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${githubConfig.token}` } });
-                let sha = getRes.ok ? (await getRes.json()).sha : undefined;
-                const payload = btoa(unescape(encodeURIComponent(JSON.stringify({ categories, bookmarks, notesList, cardPositions }, null, 2))));
-                await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${githubConfig.token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: 'Auto-save', content: payload, sha })
-                });
-            } catch (e) { console.error("保存到 GitHub 失败", e); }
-        }
-
-        function adjustZoom(delta) {
-            canvasZoomScale = Math.min(2.0, Math.max(0.3, canvasZoomScale + delta));
-            document.getElementById('bookmarkContainer').style.transform = `scale(${canvasZoomScale})`;
-        }
-        function resetZoom() { canvasZoomScale = 1.0; document.getElementById('bookmarkContainer').style.transform = `scale(1)`; }
-        function handleRightClickZoom(e) { e.preventDefault(); adjustZoom(-0.1); }
-
-        if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
-            loadFromGitHub();
-        }
-
-        // 初始化
-        switchView(currentView, currentView === 'notes' ? activeNoteId : currentCategory);
+        renderCustomStickers();
+        switchView(currentView, currentCategory, null);
     </script>
 </body>
 </html>
