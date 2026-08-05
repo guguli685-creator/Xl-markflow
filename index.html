@@ -34,7 +34,7 @@
         }
         .sidebar.collapsed {
             width: 76px;
-            padding: 24px 12px;
+            padding: 24px 10px;
         }
         .sidebar-header {
             display: flex;
@@ -42,6 +42,10 @@
             justify-content: space-between;
             margin-bottom: 24px;
             padding-left: 4px;
+        }
+        .sidebar.collapsed .sidebar-header {
+            justify-content: center;
+            padding-left: 0;
         }
         .sidebar h2 {
             font-size: 17px;
@@ -52,7 +56,7 @@
             overflow: hidden;
             transition: opacity 0.2s;
         }
-        .sidebar.collapsed h2 { opacity: 0; width: 0; }
+        .sidebar.collapsed h2 { opacity: 0; width: 0; margin: 0; display: none; }
         
         .toggle-btn {
             background: #f4d6cc;
@@ -88,6 +92,10 @@
             justify-content: flex-start;
             gap: 8px;
         }
+        .sidebar.collapsed .menu-item {
+            justify-content: center;
+            padding: 10px 0;
+        }
         .menu-item:hover { background: #faede6; color: #b56565; }
         .menu-item.active {
             background: #f4d6cc;
@@ -99,6 +107,7 @@
             margin-left: auto;
             transition: transform 0.2s;
         }
+        .sidebar.collapsed .menu-item .arrow { display: none; }
         .menu-item.collapsed-cat .arrow {
             transform: rotate(-90deg);
         }
@@ -107,7 +116,8 @@
         .sidebar.collapsed .sub-menu-container,
         .sidebar.collapsed .add-note-sub-btn,
         .sidebar.collapsed .bookmark-sub-container,
-        .sidebar.collapsed .sidebar-avatar-card { display: none; }
+        .sidebar.collapsed .sidebar-avatar-card,
+        .sidebar.collapsed .sidebar-bottom-actions { display: none; }
 
         .sub-menu-container, .bookmark-sub-container {
             padding-left: 12px;
@@ -181,20 +191,28 @@
         }
         .add-note-sub-btn:hover { background: #faede6; border-color: #d48383; }
 
-        /* 左侧开源网站头像卡片样式 */
+        /* 左侧开源网站头像卡片样式（置顶美化及收起居中适配） */
         .sidebar-avatar-card {
-            margin-top: auto;
+            margin-bottom: 16px;
             background: #fffbf8;
             border: 1.5px solid #ecd5cc;
             border-radius: 14px;
-            padding: 14px;
+            padding: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             text-decoration: none;
             color: #5c4b43;
             box-shadow: 0 4px 12px rgba(210, 185, 170, 0.1);
             transition: all 0.2s ease;
+        }
+        .sidebar.collapsed .sidebar-avatar-card {
+            justify-content: center;
+            padding: 8px;
+            width: 44px;
+            height: 44px;
+            margin: 0 auto 16px auto;
+            border-radius: 50%;
         }
         .sidebar-avatar-card:hover {
             background: #faede6;
@@ -203,13 +221,18 @@
             box-shadow: 0 6px 16px rgba(212, 131, 131, 0.15);
         }
         .sidebar-avatar-img {
-            width: 42px;
-            height: 42px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #f4d6cc;
             flex-shrink: 0;
             background: #fff;
+        }
+        .sidebar.collapsed .sidebar-avatar-img {
+            width: 32px;
+            height: 32px;
+            border-width: 1px;
         }
         .sidebar-avatar-info {
             display: flex;
@@ -217,6 +240,7 @@
             gap: 2px;
             overflow: hidden;
         }
+        .sidebar.collapsed .sidebar-avatar-info { display: none; }
         .sidebar-avatar-title {
             font-size: 13px;
             font-weight: 700;
@@ -231,6 +255,43 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        /* 左侧底部导入导出及清空按钮区域 */
+        .sidebar-bottom-actions {
+            margin-top: auto;
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .sidebar-action-btn {
+            background: #fffbf8;
+            border: 1.5px solid #ecd5cc;
+            color: #8c7368;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .sidebar-action-btn:hover {
+            background: #faede6;
+            color: #b56565;
+            border-color: #d48383;
+        }
+        .sidebar-action-btn.danger {
+            color: #c45555;
+            border-color: #f0ded6;
+        }
+        .sidebar-action-btn.danger:hover {
+            background: #fdf2f2;
+            border-color: #d48383;
+            color: #a33838;
         }
 
         /* 右侧主内容区 */
@@ -901,16 +962,31 @@
             <h2>✨ MarkFlow</h2>
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
-        <div id="menuList"></div>
-
-        <!-- 开源网站头像卡片 -->
-        <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库[cite: 1]">
+        
+        <!-- 开源网站头像跳转卡片 -->
+        <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库">
             <img src="https://github.com/guguli685-creator.png" alt="Xl-markflow Logo" class="sidebar-avatar-img">
             <div class="sidebar-avatar-info">
                 <span class="sidebar-avatar-title">Xl-markflow</span>
                 <span class="sidebar-avatar-desc">开源手帐与书签空间</span>
             </div>
         </a>
+
+        <div id="menuList"></div>
+
+        <!-- 导入、导出及清空所有数据按钮 -->
+        <div class="sidebar-bottom-actions">
+            <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
+            <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
+                📥 <span>导入 HTML 书签</span>
+            </button>
+            <button class="sidebar-action-btn" onclick="exportHtmlBookmarks()" title="导出 HTML 书签">
+                📤 <span>导出 HTML 书签</span>
+            </button>
+            <button class="sidebar-action-btn danger" onclick="clearAllData()" title="清空所有数据">
+                🗑️ <span>清空所有数据</span>
+            </button>
+        </div>
     </div>
 
     <!-- 右侧主内容区 -->
@@ -1137,6 +1213,103 @@
             // 触发自动同步到用户的私有仓库
             syncDataToCloudRepo();
         }
+
+        // ================= 导入、导出及清空数据核心功能 =================
+        function exportHtmlBookmarks() {
+            let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
+            
+            const cats = getAllCategories();
+            cats.forEach(cat => {
+                htmlContent += `    <DT><H3>${cat}</H3>\n    <DL><p>\n`;
+                const items = bookmarks.filter(b => b.group === cat);
+                items.forEach(item => {
+                    htmlContent += `        <DT><A HREF="${item.url}">${item.title}</A></DT>\n`;
+                });
+                htmlContent += `    </DL><p>\n`;
+            });
+            htmlContent += `</DL><p>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `markflow-bookmarks-${new Date().toISOString().slice(0,10)}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast();
+        }
+
+        function handleImportBookmarks(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(e.target.result, 'text/html');
+                const links = doc.querySelectorAll('a');
+                
+                if (links.length === 0) {
+                    alert('未能在文件中解析出有效的书签链接。');
+                    return;
+                }
+
+                let importedCount = 0;
+                links.forEach(a => {
+                    const title = a.textContent.trim() || '未命名网页';
+                    const url = a.getAttribute('href');
+                    if (!url) return;
+
+                    let groupName = '导入书签';
+                    let parent = a.parentElement;
+                    while (parent && parent.tagName !== 'BODY') {
+                        if (parent.tagName === 'DL') {
+                            const prev = parent.previousElementSibling;
+                            if (prev && (prev.tagName === 'H3' || prev.tagName === 'DT')) {
+                                groupName = prev.textContent.trim() || '导入书签';
+                                break;
+                            }
+                        }
+                        parent = parent.parentElement;
+                    }
+
+                    if (!categories.includes(groupName)) {
+                        categories.push(groupName);
+                    }
+
+                    const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
+                    bookmarks.push({ id: newId, group: groupName, title, url });
+                    importedCount++;
+                });
+
+                event.target.value = '';
+                persistState();
+                renderBookmarks(bookmarks);
+                alert(`✨ 成功导入 ${importedCount} 个书签！`);
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ 警告：清空操作将删除所有的书签、卡片分类以及手帐笔记数据，且无法恢复！确定要继续吗？')) {
+                localStorage.clear();
+                categories = ["待办", "导航精品", "投资", "系统"];
+                bookmarks = [];
+                notesList = [{ id: 1, title: "🌸 我的手帐日常", content: "<p></p>" }];
+                activeNoteId = 1;
+                currentView = 'bookmarks';
+                currentCategory = 'all';
+                customStickers = [];
+                cardPositions = {};
+                
+                persistState();
+                switchView('bookmarks', 'all');
+                alert('🧹 所有数据已清空重置。');
+            }
+        }
+        // =========================================================================
 
         // ================= GitHub 云端多用户私有仓库同步核心模块 =================
         function openGithubAuthModal() {
@@ -1995,7 +2168,6 @@
             const container = document.getElementById('categoryTagsContainer');
             const cats = getAllCategories();
             let html = '';
-            cats.cat.forEach(cat => { /* handled safely via array */ });
             cats.forEach(cat => {
                 const isSelected = (cat === defaultCat) ? 'selected' : '';
                 html += `<div class="category-tag ${isSelected}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
