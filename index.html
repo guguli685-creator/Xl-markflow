@@ -191,7 +191,7 @@
         }
         .add-note-sub-btn:hover { background: #faede6; border-color: #d48383; }
 
-        /* 左侧开源网站头像卡片样式（置顶美化及收起居中适配） */
+        /* 左侧开源网站头像卡片样式 */
         .sidebar-avatar-card {
             margin-bottom: 16px;
             background: #fffbf8;
@@ -963,7 +963,7 @@
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         
-        <!-- 开源网站头像跳转卡片 -->
+        <!-- 开源网站头像跳转卡片（置顶且在收起状态下优雅居中显示） -->
         <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库">
             <img src="https://github.com/guguli685-creator.png" alt="Xl-markflow Logo" class="sidebar-avatar-img">
             <div class="sidebar-avatar-info">
@@ -974,7 +974,7 @@
 
         <div id="menuList"></div>
 
-        <!-- 导入、导出及清空所有数据按钮 -->
+        <!-- 导入、导出及清空所有数据按钮（沉底） -->
         <div class="sidebar-bottom-actions">
             <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
             <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
@@ -1200,6 +1200,11 @@
         let currentSearchTab = 'bookmark';
         let verifiedTokenTemp = '';
 
+        // 页面刚加载时，如果用户已经绑定了仓库，自动从云端同步最新数据以实现自动刷新同步
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchDataFromCloudRepo();
+        });
+
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
             localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
@@ -1210,13 +1215,13 @@
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
 
-            // 触发自动同步到用户的私有仓库
+            // 触发自动同步到用户的私有仓库（包括生成并上传独立的书签 HTML 文件）
             syncDataToCloudRepo();
         }
 
         // ================= 导入、导出及清空数据核心功能 =================
-        function exportHtmlBookmarks() {
-            let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
+        function generateBookmarksHtmlString() {
+            let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
             
             const cats = getAllCategories();
             cats.forEach(cat => {
@@ -1228,7 +1233,11 @@
                 htmlContent += `    </DL><p>\n`;
             });
             htmlContent += `</DL><p>`;
+            return htmlContent;
+        }
 
+        function exportHtmlBookmarks() {
+            const htmlContent = generateBookmarksHtmlString();
             const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1311,7 +1320,7 @@
         }
         // =========================================================================
 
-        // ================= GitHub 云端多用户私有仓库同步核心模块 =================
+        // ================= GitHub 云端多用户私有仓库同步与自动 HTML 生成模块 =================
         function openGithubAuthModal() {
             document.getElementById('githubAuthModal').style.display = 'flex';
             document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || '';
@@ -1336,7 +1345,7 @@
                 select.innerHTML = '';
                 repos.forEach(r => {
                     const opt = document.createElement('option');
-                    opt.value = r.full_name; // e.g. "username/repo"
+                    opt.value = r.full_name;
                     opt.textContent = `${r.full_name} (${r.private ? '私有' : '公开'})`;
                     select.appendChild(opt);
                 });
@@ -1356,42 +1365,98 @@
             localStorage.setItem('gh_token', verifiedTokenTemp);
             localStorage.setItem('gh_target_repo', repoFullName);
             closeGithubAuthModal();
-            alert('🎉 绑定成功！您的所有增删改查将自动同步到: ' + repoFullName);
+            alert('🎉 绑定成功！您的所有数据和书签 HTML 网页将自动同步到仓库: ' + repoFullName);
             syncDataToCloudRepo();
+        }
+
+        // 网页刷新时从云端拉取最新数据自动同步
+        async function fetchDataFromCloudRepo() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return;
+
+            const path = 'markflow-backup-data.json';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+            try {
+                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const fileData = await res.json();
+                    const jsonString = decodeURIComponent(escape(atob(fileData.content)));
+                    const bundle = JSON.parse(jsonString);
+
+                    if (bundle.categories) categories = bundle.categories;
+                    if (bundle.bookmarks) bookmarks = bundle.bookmarks;
+                    if (bundle.notesList) notesList = bundle.notesList;
+                    if (bundle.cardPositions) cardPositions = bundle.cardPositions;
+                    if (bundle.customStickers) customStickers = bundle.customStickers;
+
+                    persistState();
+                    renderBookmarks(bookmarks);
+                    renderCustomStickers();
+                    updateSidebar();
+                }
+            } catch (err) {
+                console.error("云端刷新自动同步失败：", err);
+            }
         }
 
         async function syncDataToCloudRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) return; // 未配置则仅本地保存
+            if (!token || !repo) return;
 
-            const path = 'markflow-backup-data.json';
-            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+            // 1. 同步主 JSON 数据
+            const jsonPath = 'markflow-backup-data.json';
+            const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
 
             const bundleData = {
                 categories, bookmarks, notesList, cardPositions, customStickers,
                 updatedAt: new Date().toISOString()
             };
+            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
 
-            const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+            // 2. 同时在同目录下自动生成并同步书签 HTML 文件防止丢失
+            const htmlPath = 'bookmarks-backup.html';
+            const htmlUrl = `https://api.github.com/repos/${repo}/contents/${htmlPath}`;
+            const htmlString = generateBookmarksHtmlString();
+            const htmlEncoded = btoa(unescape(encodeURIComponent(htmlString)));
 
             try {
-                let sha = '';
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) {
-                    const fileInfo = await getRes.json();
-                    sha = fileInfo.sha;
+                // 更新 JSON 文件
+                let jsonSha = '';
+                const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getJsonRes.ok) {
+                    const info = await getJsonRes.json();
+                    jsonSha = info.sha;
                 }
-
-                await fetch(url, {
+                await fetch(jsonUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 自动化云端同步',
-                        content: contentEncoded,
-                        sha: sha || undefined
+                        message: '✨ MarkFlow 自动化云端同步 JSON 数据',
+                        content: jsonEncoded,
+                        sha: jsonSha || undefined
                     })
                 });
+
+                // 更新 HTML 书签文件
+                let htmlSha = '';
+                const getHtmlRes = await fetch(htmlUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getHtmlRes.ok) {
+                    const info = await getHtmlRes.json();
+                    htmlSha = info.sha;
+                }
+                await fetch(htmlUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ MarkFlow 自动同步生成书签防丢 HTML',
+                        content: htmlEncoded,
+                        sha: htmlSha || undefined
+                    })
+                });
+
                 showToast();
             } catch(err) {
                 console.error("云端同步失败：", err);
