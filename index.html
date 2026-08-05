@@ -262,7 +262,25 @@
         }
         .add-btn-header:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
 
-        /* 沉浸式独立书签/笔记综合搜索全屏页面 */
+        .sync-btn-header {
+            background: #fff;
+            border: 2px solid #ecd5cc;
+            color: #b56565;
+            padding: 0 14px;
+            height: 38px;
+            border-radius: 19px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(212, 131, 131, 0.1);
+        }
+        .sync-btn-header:hover { background: #faede6; border-color: #d48383; }
+
+        /* 沉浸式独立综合搜索全屏页面 */
         .search-fullscreen-view {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -800,11 +818,11 @@
         }
         .modal {
             background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 16px;
-            padding: 24px; width: 420px; box-shadow: 0 12px 30px rgba(210, 185, 170, 0.25);
+            padding: 24px; width: 440px; box-shadow: 0 12px 30px rgba(210, 185, 170, 0.25);
             display: flex; flex-direction: column; gap: 16px;
         }
         .modal h3 { color: #b56565; font-size: 16px; font-weight: 700; }
-        .modal input {
+        .modal input, .modal select {
             background: #fff; border: 2px solid #ecd5cc; padding: 10px 14px;
             border-radius: 12px; color: #5c4b43; outline: none; font-size: 14px; width: 100%;
         }
@@ -838,6 +856,7 @@
         <div class="header" id="topHeader">
             <input type="text" class="search-box" placeholder="点击进入沉浸式书签与笔记综合检索..." id="searchInput" readonly onclick="openSearchFullscreen()">
             <div class="header-right">
+                <button class="sync-btn-header" onclick="openGithubAuthModal()" title="绑定GitHub云端仓库">☁️ 同步仓库</button>
                 <button class="add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建空白卡片分类">📁 新建卡片</button>
                 <button class="add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
             </div>
@@ -862,7 +881,7 @@
                 <input type="text" class="search-fullscreen-input" placeholder="键入关键词实时检索所有书签与笔记..." id="fullscreenSearchInput" oninput="handleFullscreenSearch()" autofocus>
             </div>
             
-            <!-- 标签页切换栏（书签板块 / 笔记板块）+ 清除记录快捷按钮 -->
+            <!-- 标签页切换栏 + 清除记录快捷按钮 -->
             <div class="search-tabs-bar">
                 <div class="search-tabs-group">
                     <button class="search-tab-btn active" id="tabBookmarkBtn" onclick="switchSearchTab('bookmark')">🔖 书签板块</button>
@@ -947,7 +966,26 @@
     </div>
 
     <!-- 优雅的轻提示 Toast -->
-    <div class="toast-tip" id="toastTip">✨ 文章已通过 Ctrl+S 自动保存！</div>
+    <div class="toast-tip" id="toastTip">✨ 数据已自动保存并同步！</div>
+
+    <!-- GitHub 授权与仓库选择弹窗 -->
+    <div class="modal-overlay" id="githubAuthModal">
+        <div class="modal">
+            <h3>☁️ 绑定您的 GitHub 私有仓库</h3>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入您的 Personal Access Token (需 repo 权限)，系统将自动加载您的私有/公开仓库供您选择。</p>
+            <input type="password" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off">
+            <button class="modal-btn confirm" style="width: 100%;" onclick="fetchUserRepositories()">加载我的仓库列表</button>
+            
+            <div id="repoSelectBox" style="display:none; flex-direction:column; gap:8px;">
+                <div class="category-selector-label">选择用于保存数据的专属仓库：</div>
+                <select id="userRepoSelect"></select>
+                <button class="modal-btn confirm" style="width: 100%;" onclick="confirmRepoBinding()">确认绑定并开始同步</button>
+            </div>
+            <div class="modal-buttons" style="margin-top: 5px;">
+                <button class="modal-btn cancel" onclick="closeGithubAuthModal()">取消</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 添加书签弹窗 -->
     <div class="modal-overlay" id="bookmarkModal">
@@ -1022,6 +1060,7 @@
         let selectedStickerElement = null;
         let canvasZoomScale = 1.0;
         let currentSearchTab = 'bookmark';
+        let verifiedTokenTemp = '';
 
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
@@ -1032,7 +1071,98 @@
             localStorage.setItem('markflow_currentCategory', currentCategory);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
+
+            // 触发自动同步到用户的私有仓库
+            syncDataToCloudRepo();
         }
+
+        // ================= GitHub 云端多用户私有仓库同步核心模块 =================
+        function openGithubAuthModal() {
+            document.getElementById('githubAuthModal').style.display = 'flex';
+            document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || '';
+            document.getElementById('repoSelectBox').style.display = 'none';
+        }
+        function closeGithubAuthModal() {
+            document.getElementById('githubAuthModal').style.display = 'none';
+        }
+
+        async function fetchUserRepositories() {
+            const token = document.getElementById('ghTokenInput').value.trim();
+            if (!token) { alert('请输入 Token'); return; }
+
+            try {
+                const res = await fetch('https://api.github.com/user/repos?visibility=all&sort=updated&per_page=100', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) { alert('Token 验证失败，请确认是否具备 repo 权限'); return; }
+
+                const repos = await res.json();
+                const select = document.getElementById('userRepoSelect');
+                select.innerHTML = '';
+                repos.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.full_name; // e.g. "username/repo"
+                    opt.textContent = `${r.full_name} (${r.private ? '私有' : '公开'})`;
+                    select.appendChild(opt);
+                });
+
+                verifiedTokenTemp = token;
+                document.getElementById('repoSelectBox').style.display = 'flex';
+                alert('✨ 验证成功！请在下方选择目标仓库');
+            } catch(e) {
+                alert('网络异常或请求失败');
+            }
+        }
+
+        function confirmRepoBinding() {
+            const repoFullName = document.getElementById('userRepoSelect').value;
+            if(!repoFullName) { alert('请选择仓库'); return; }
+
+            localStorage.setItem('gh_token', verifiedTokenTemp);
+            localStorage.setItem('gh_target_repo', repoFullName);
+            closeGithubAuthModal();
+            alert('🎉 绑定成功！您的所有增删改查将自动同步到: ' + repoFullName);
+            syncDataToCloudRepo();
+        }
+
+        async function syncDataToCloudRepo() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return; // 未配置则仅本地保存
+
+            const path = 'markflow-backup-data.json';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+            const bundleData = {
+                categories, bookmarks, notesList, cardPositions, customStickers,
+                updatedAt: new Date().toISOString()
+            };
+
+            const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+            try {
+                let sha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const fileInfo = await getRes.json();
+                    sha = fileInfo.sha;
+                }
+
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ MarkFlow 自动化云端同步',
+                        content: contentEncoded,
+                        sha: sha || undefined
+                    })
+                });
+                showToast();
+            } catch(err) {
+                console.error("云端同步失败：", err);
+            }
+        }
+        // =========================================================================
 
         function autoSaveState() {
             if (currentView === 'notes') {
