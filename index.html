@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>MarkFlow - 沉浸手帐空间</title>
+    <style>
+        @font-face {
+            font-family: 'CustomHandwritingFont';
+            src: url('./font.woff2') format('woff2'),
+                 url('./font.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, input, button, textarea, select {
+            font-family: 'CustomHandwritingFont', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #fdfbf7;
+            color: #5c4b43;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-image: radial-gradient(#f1e1d6 1.5px, transparent 1.5px);
+            background-size: 28px 28px;
+        }
+
+        /* 左侧菜单栏 */
+        .sidebar {
+            width: 260px;
+            background: rgba(255, 248, 243, 0.95);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            z-index: 100;
+            transition: width 0.3s ease, padding 0.3s ease;
+            position: relative;
+            box-shadow: 4px 0 20px rgba(210, 180, 160, 0.08);
+            flex-shrink: 0;
+            border-right: 2px dashed #f2dfd6;
+            overflow-y: auto;
+        }
+        .sidebar.collapsed { width: 76px; padding: 24px 12px; }
+        .sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-left: 4px; }
+        .sidebar h2 { font-size: 17px; color: #d48383; font-weight: 700; letter-spacing: 1px; white-space: nowrap; overflow: hidden; transition: opacity 0.2s; }
+        .sidebar.collapsed h2 { opacity: 0; width: 0; }
+        
+        .toggle-btn {
+            background: #f4d6cc; border: none; color: #a34848; width: 28px; height: 28px; border-radius: 50%;
+            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s, transform 0.3s; flex-shrink: 0; box-shadow: 0 2px 5px rgba(212, 131, 131, 0.2);
+        }
+        .toggle-btn:hover { background: #e2ab9d; color: #fff; transform: scale(1.1); }
+        .sidebar.collapsed .toggle-btn { margin: 0 auto; }
+
+        .menu-item {
+            padding: 10px 14px; border-radius: 12px; cursor: pointer; color: #8c7368; margin-bottom: 6px;
+            font-size: 14px; transition: all 0.2s ease; background: transparent; font-weight: 500;
+            display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+        }
+        .menu-item:hover { background: #faede6; color: #b56565; }
+        .menu-item.active { background: #f4d6cc; color: #a34848; box-shadow: 0 4px 10px rgba(212, 131, 131, 0.15); font-weight: 600; }
+        .menu-item .arrow { margin-left: auto; transition: transform 0.2s; }
+        .menu-item.collapsed-cat .arrow { transform: rotate(-90deg); }
+
+        .sidebar.collapsed .menu-text, .sidebar.collapsed .sub-menu-container, .sidebar.collapsed .add-note-sub-btn, .sidebar.collapsed .bookmark-sub-container, .sidebar.collapsed .io-sidebar-group { display: none; }
+
+        .sub-menu-container, .bookmark-sub-container {
+            padding-left: 12px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; overflow: hidden; transition: max-height 0.3s ease;
+        }
+        .bookmark-sub-container.collapsed, .sub-menu-container.collapsed { max-height: 0 !important; margin-bottom: 0; }
+
+        .sub-menu-item {
+            padding: 8px 12px; border-radius: 10px; cursor: pointer; color: #8c7368; font-size: 13px;
+            transition: all 0.2s; background: #fffbf8; border: 1px solid #faede6; display: flex; align-items: center; justify-content: space-between;
+        }
+        .sub-menu-item:hover { background: #faede6; color: #b56565; }
+        .sub-menu-item.active { background: #f4d6cc; color: #a34848; font-weight: 600; border-color: #f2dfd6; }
+        .sub-menu-left { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .sub-delete-btn { background: none; border: none; color: #c49a9a; font-size: 14px; cursor: pointer; padding: 0 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s; }
+        .sub-menu-item:hover .sub-delete-btn { opacity: 1; }
+        .sub-delete-btn:hover { background: #f4d6cc; color: #a34848; }
+
+        .add-note-sub-btn {
+            background: none; border: 1.5px dashed #ecd5cc; color: #b56565; padding: 6px; border-radius: 8px;
+            font-size: 12px; cursor: pointer; text-align: center; margin-bottom: 8px; transition: all 0.2s;
+        }
+        .add-note-sub-btn:hover { background: #faede6; border-color: #d48383; }
+
+        .io-sidebar-group { margin-top: auto; padding-top: 14px; border-top: 2px dashed #f2dfd6; display: flex; flex-direction: column; gap: 6px; }
+        .io-btn {
+            background: #fffbf8; border: 1.5px solid #ecd5cc; color: #8c7368; padding: 8px 12px; border-radius: 10px;
+            font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; text-align: left; width: 100%;
+        }
+        .io-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
+        .io-btn.danger { border-color: #f4d6cc; color: #b56565; background: #fff5f2; }
+        .io-btn.danger:hover { background: #fde8e2; border-color: #d48383; color: #a34848; }
+
+        /* 右侧主内容区 */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .header {
+            padding: 20px 36px; display: flex; justify-content: center; align-items: center;
+            background: rgba(253, 251, 247, 0.6); backdrop-filter: blur(4px); position: relative; z-index: 50;
+        }
+        .search-box {
+            background: #fff; border: 2px solid #ecd5cc; padding: 10px 20px; border-radius: 20px;
+            color: #5c4b43; width: 400px; outline: none; font-size: 14px; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); text-align: center; cursor: pointer;
+        }
+        .search-box:focus { border-color: #d48383; box-shadow: 0 0 0 4px rgba(212, 131, 131, 0.1); text-align: left; cursor: text; }
+        
+        .header-right { position: absolute; right: 36px; display: flex; align-items: center; gap: 10px; }
+        .add-card-btn-header {
+            background: #f0ded6; border: 2px solid #ecd5cc; color: #8c4343; padding: 0 14px; height: 38px;
+            border-radius: 19px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .add-card-btn-header:hover { background: #e2ab9d; color: #fff; }
+
+        .add-btn-header {
+            background: #f4d6cc; border: 2px solid #ecd5cc; color: #a34848; width: 38px; height: 38px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+        }
+        .add-btn-header:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
+
+        /* 缩放控制盒样式 */
+        .zoom-control-bar {
+            position: absolute; bottom: 30px; right: 30px; background: rgba(255, 248, 243, 0.95);
+            backdrop-filter: blur(4px); border: 2px solid #ecd5cc; padding: 6px; border-radius: 28px;
+            display: flex; align-items: center; gap: 8px; z-index: 100; box-shadow: 0 8px 20px rgba(210, 185, 170, 0.2);
+            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s ease;
+        }
+        .zoom-control-bar.collapsed { width: 48px; }
+        .zoom-control-bar:not(.collapsed) { width: 168px; }
+        .zoom-toggle-handle {
+            background: #f4d6cc; border: 1px solid #d48383; color: #a34848; width: 34px; height: 34px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; transition: transform 0.3s ease, background 0.2s;
+        }
+        .zoom-toggle-handle:hover { background: #e2ab9d; color: #fff; }
+        .zoom-control-bar.collapsed .zoom-toggle-handle { transform: rotate(180deg); }
+        .zoom-inner-actions { display: flex; align-items: center; gap: 8px; opacity: 1; transition: opacity 0.25s ease 0.1s; }
+        .zoom-control-bar.collapsed .zoom-inner-actions { opacity: 0; pointer-events: none; width: 0; overflow: hidden; }
+        .zoom-icon-btn {
+            background: #fffbf8; border: 1px solid #ecd5cc; color: #a34848; width: 34px; height: 34px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: all 0.2s; user-select: none; flex-shrink: 0;
+        }
+        .zoom-icon-btn:hover { background: #f4d6cc; color: #fff; transform: scale(1.08); }
+
+        .content-canvas { flex: 1; position: relative; overflow: auto; padding: 40px; }
+        #bookmarkContainer { position: relative; width: 3500px; height: 4000px; transform-origin: 0 0; transition: transform 0.1s ease-out; }
+
+        /* 🌟 优化后的卡片样式：高度自适应，绝不截断超长书签列表 */
+        .card-group {
+            position: absolute; width: 320px; background: #ffffff; border: 2px solid #f2dfd6; border-radius: 16px;
+            padding: 22px 20px 20px 20px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(210, 185, 170, 0.18);
+            cursor: grab; user-select: none; transition: box-shadow 0.2s;
+        }
+        .card-group:active { cursor: grabbing; z-index: 120; }
+        .card-group::before {
+            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 90px; height: 22px; background: rgba(244, 214, 204, 0.75); border-radius: 3px;
+        }
+        .card-group:nth-child(2n)::before { background: rgba(212, 227, 218, 0.75); }
+        .card-group:nth-child(3n)::before { background: rgba(238, 221, 207, 0.75); }
+
+        .card-group-title {
+            font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .card-group-right { display: flex; align-items: center; gap: 8px; }
+        .card-group-title .count-badge { background: #faede6; color: #d48383; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .delete-card-btn { background: none; border: none; color: #c49a9a; cursor: pointer; font-size: 14px; padding: 0 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s; }
+        .card-group:hover .delete-card-btn { opacity: 1; }
+        .delete-card-btn:hover { background: #f4d6cc; color: #a34848; }
+        
+        .bookmark-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; font-size: 14px; background: #fffbf8; border: 1px solid #faede6;
+        }
+        .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
+        .bookmark-link { color: #6b564d; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; font-weight: 500; }
+        .bookmark-link:hover { color: #a34848; text-decoration: underline; }
+        .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
+
+        .card-add-btn {
+            margin-top: 8px; background: #fffbf8; border: 2px dashed #ecd5cc; color: #b56565; padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .card-add-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
+        
+        .actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s; }
+        .bookmark-item:hover .actions { opacity: 1; }
+        .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 12px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+        .btn:hover { background: #e2ab9d; color: #fff; }
+
+        /* 手帐笔记页面专用样式 */
+        .notes-page-immersive {
+            max-width: 900px; margin: 0 auto; width: 100%; height: 100%; background: transparent; padding: 10px 20px 50px 20px; display: flex; flex-direction: column; gap: 16px; position: relative;
+        }
+        .notes-toolbar {
+            display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.85); padding: 10px 20px; border-radius: 14px; border: 1.5px solid #ecd5cc; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 15px rgba(210, 185, 170, 0.08);
+        }
+        .toolbar-group { display: flex; gap: 6px; align-items: center; }
+        .tool-btn {
+            background: #fffbf8; border: 1px solid #ecd5cc; color: #8c7368; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 600; transition: all 0.2s;
+        }
+        .tool-btn:hover { background: #f4d6cc; color: #a34848; }
+        .sticker-toggle-btn {
+            background: #f4d6cc; border: 1px solid #d48383; color: #a34848; padding: 6px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
+        .sticker-panel {
+            display: none; background: #fff8f3; border: 1.5px dashed #ecd5cc; padding: 14px 18px; border-radius: 14px; gap: 14px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(210, 185, 170, 0.1);
+        }
+        .sticker-item { font-size: 28px; cursor: grab; padding: 4px; border-radius: 8px; user-select: none; }
+        .sticker-item:hover { transform: scale(1.2); background: #faede6; }
+        .notes-editor-title { font-size: 38px; font-weight: 700; color: #b56565; border: none; outline: none; width: 100%; background: transparent; letter-spacing: 1px; }
+        .notes-editor-body { flex: 1; border: none; outline: none; font-size: 17px; color: #5c4b43; line-height: 2.2; width: 100%; position: relative; min-height: 350px; }
+        .notes-status-bar { display: flex; justify-content: flex-end; gap: 20px; font-size: 13px; color: #b5a49c; padding-top: 10px; border-top: 2px dotted #faede6; user-select: none; }
+
+        /* 模态框通用样式 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(92, 75, 67, 0.4); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 200; }
+        .modal { background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 16px; padding: 24px; width: 420px; box-shadow: 0 12px 30px rgba(210, 185, 170, 0.25); display: flex; flex-direction: column; gap: 16px; }
+        .modal h3 { color: #b56565; font-size: 16px; font-weight: 700; }
+        .modal input { background: #fff; border: 2px solid #ecd5cc; padding: 10px 14px; border-radius: 12px; color: #5c4b43; outline: none; font-size: 14px; width: 100%; }
+        .category-selector-label { font-size: 13px; color: #8c7368; font-weight: 500; }
+        .category-tags { display: flex; flex-wrap: wrap; gap: 8px; max-height: 100px; overflow-y: auto; }
+        .category-tag { background: #fff; border: 1.5px solid #ecd5cc; padding: 6px 12px; border-radius: 10px; font-size: 13px; color: #6b564d; cursor: pointer; }
+        .category-tag.selected { background: #f4d6cc; border-color: #d48383; color: #a34848; font-weight: 600; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-btn { padding: 6px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; border: none; font-weight: 500; }
+        .modal-btn.cancel { background: #f0ded6; color: #8c7368; }
+        .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
+        .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
+        
+        .toast-tip {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(50px);
+            background: #fff8f3; border: 2px solid #ecd5cc; color: #a34848; padding: 10px 24px;
+            border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 10px 25px rgba(210, 185, 170, 0.25);
+            transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; z-index: 300;
+        }
+        .toast-tip.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body ondragover="allowGlobalDrag(event)" ondrop="handleGlobalDrop(event)">
+
+    <!-- 左侧菜单栏 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>✨ MarkFlow</h2>
+            <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
+        </div>
+        <div id="menuList"></div>
+
+        <div class="io-sidebar-group">
+            <button class="io-btn" onclick="openGitHubModal()" title="绑定私有 GitHub 仓库自动同步数据">⚙️ 绑定 GitHub</button>
+            <button class="io-btn" onclick="triggerImportHtml()" title="选择或拖拽 .html 书签文件导入">📥 导入 HTML 书签</button>
+            <button class="io-btn" onclick="exportHtmlBookmarks()" title="导出当前书签为标准 HTML 文件">📤 导出 HTML 书签</button>
+            <button class="io-btn danger" onclick="confirmRemoveAllData()" title="清空全部书签与笔记">🗑️ 清空所有数据</button>
+            <input type="file" id="importHtmlFile" accept=".html,.htm" style="display: none;" onchange="handleFileSelected(event)">
+        </div>
+    </div>
+
+    <!-- 右侧主内容区 -->
+    <div class="main-content">
+        <div class="header" id="topHeader">
+            <input type="text" class="search-box" placeholder="点击进入沉浸式书签与笔记综合检索..." id="searchInput" readonly onclick="openSearchFullscreen()">
+            <div class="header-right">
+                <button class="add-card-btn-header" onclick="openCardModal()" title="新建空白卡片分类">📁 新建卡片</button>
+                <button class="add-btn-header" onclick="openBookmarkModal()" title="添加新书签">+</button>
+            </div>
+        </div>
+        
+        <!-- 书签自由画布 -->
+        <div class="content-canvas" id="canvasScrollWrapper">
+            <div id="bookmarkContainer"></div>
+        </div>
+
+        <!-- 手帐笔记写作页面 -->
+        <div class="content-canvas" id="notesContainer" style="display: none;">
+            <div class="notes-page-immersive" id="notesPageBody" onclick="handlePageClick(event)">
+                <div class="notes-toolbar">
+                    <div class="toolbar-group">
+                        <button class="tool-btn" onclick="formatText('H1')">H1</button>
+                        <button class="tool-btn" onclick="formatText('H2')">H2</button>
+                        <button class="tool-btn" onclick="formatText('H3')">H3</button>
+                        <button class="tool-btn" onclick="formatText('P')">正文</button>
+                    </div>
+                    <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 手帐贴纸箱</button>
+                </div>
+                <div class="sticker-panel" id="stickerPanel">
+                    <span class="sticker-item" onclick="insertEmoji('🌸')">🌸</span>
+                    <span class="sticker-item" onclick="insertEmoji('⭐')">⭐</span>
+                    <span class="sticker-item" onclick="insertEmoji('💡')">💡</span>
+                    <span class="sticker-item" onclick="insertEmoji('🧸')">🧸</span>
+                </div>
+                <input type="text" class="notes-editor-title" id="noteTitleInput" placeholder="输入页面大标题..." autocomplete="off" oninput="autoSaveState()">
+                <div class="notes-editor-body" id="noteBodyInput" contenteditable="true" placeholder="在这里沉浸式地书写文章内容..." oninput="updateStats(); autoSaveState();"></div>
+                <div class="notes-status-bar">
+                    <span id="wordCountText">字数: 0 字</span>
+                    <span id="lineCountText">行数: 0 行</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 缩放控制条 -->
+        <div class="zoom-control-bar collapsed" id="zoomControlBar">
+            <button class="zoom-toggle-handle" onclick="toggleZoomBox()" title="展开/收起工具盒">📦</button>
+            <div class="zoom-inner-actions">
+                <button class="zoom-icon-btn" onclick="adjustZoom(0.1)" title="放大">+</button>
+                <button class="zoom-icon-btn" onclick="adjustZoom(-0.1)" title="缩小" oncontextmenu="handleRightClickZoom(event)">-</button>
+                <button class="zoom-icon-btn" onclick="resetZoom()" title="重置视角">🏠</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 轻提示 Toast -->
+    <div class="toast-tip" id="toastTip">✨ 数据已同步并保存！</div>
+
+    <!-- 添加书签弹窗 -->
+    <div class="modal-overlay" id="bookmarkModal">
+        <div class="modal">
+            <h3>✨ 添加新书签</h3>
+            <input type="text" id="bookmarkTitle" placeholder="网站名称（例如：GitHub）">
+            <input type="text" id="bookmarkUrl" placeholder="网址链接（例如：https://github.com）">
+            <div class="category-selector-label">选择归属卡片分类：</div>
+            <div class="category-tags" id="categoryTagsContainer"></div>
+            <input type="text" id="bookmarkGroup" placeholder="或直接手打输入新分类名称..." autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn confirm" onclick="saveBookmark()">确定添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建空白卡片分类弹窗 -->
+    <div class="modal-overlay" id="cardModal">
+        <div class="modal">
+            <h3>📁 新建空白卡片分类</h3>
+            <input type="text" id="newCardGroupName" placeholder="输入新卡片分类名称（例如：宝藏网站）" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn confirm" onclick="saveNewCardGroup()">创建卡片</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建手帐笔记页面弹窗 -->
+    <div class="modal-overlay" id="noteSubModal">
+        <div class="modal">
+            <h3>📖 创建新笔记页面</h3>
+            <input type="text" id="newNoteTitleInput" placeholder="输入页面名称（例如：读书笔记）" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn confirm" onclick="confirmCreateNote()">创建页面</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GitHub 绑定配置弹窗 -->
+    <div class="modal-overlay" id="gitHubModal">
+        <div class="modal">
+            <h3>⚙️ 绑定私有 GitHub 仓库</h3>
+            <div style="font-size:12px; color:#8c7368; line-height:1.5;">
+                配置后，你创建的卡片、书签和手帐笔记将自动静默同步到你的私有仓库中。
+            </div>
+            <input type="text" id="ghOwnerInput" placeholder="GitHub 用户名 (例如: username)" autocomplete="off">
+            <input type="text" id="ghRepoInput" placeholder="私有仓库名称 (例如: my-markflow-data)" autocomplete="off">
+            <input type="password" id="ghTokenInput" placeholder="Personal Access Token (需要 repo 权限)" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn confirm" onclick="saveGitHubConfig()">保存并同步</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let categories = JSON.parse(localStorage.getItem('markflow_categories')) || ["待办", "导航精品", "投资", "系统"];
+        let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [
+            { id: 1, group: "待办", title: "Android 移动应用开发者工具", url: "https://developer.android.com" },
+            { id: 2, group: "待办", title: "Typora - simple yet powerful...", url: "https://typora.io" },
+            { id: 3, group: "导航精品", title: "Tbox导航 | 只收录优质在线工具...", url: "https://www.tboxn.com" },
+            { id: 4, group: "投资", title: "VeighNa量化社区 - 你的开源...", url: "https://vnpy.com" },
+            { id: 5, group: "系统", title: "GitHub", url: "https://github.com" }
+        ];
+
+        let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
+            { id: 1, title: "🌸 我的手帐日常", content: "<p>欢迎来到手帐空间~</p>" },
+            { id: 2, title: "💡 灵感备忘录", content: "<p>记录每一个闪光的想法...</p>" }
+        ];
+
+        let activeNoteId = parseInt(localStorage.getItem('markflow_activeNoteId')) || 1;
+        let currentView = localStorage.getItem('markflow_currentView') || 'bookmarks';
+        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
+        let currentCategory = 'all';
+        let canvasZoomScale = 1.0;
+        let sidebarCollapsed = false;
+        let bookmarkMenuCollapsed = false;
+        let notesMenuCollapsed = false;
+
+        let githubConfig = JSON.parse(localStorage.getItem('markflow_gh_config')) || {
+            owner: '', repo: '', path: 'markflow_data.json', token: ''
+        };
+
+        function persistState() {
+            localStorage.setItem('markflow_categories', JSON.stringify(categories));
+            localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
+            localStorage.setItem('markflow_notesList', JSON.stringify(notesList));
+            localStorage.setItem('markflow_activeNoteId', activeNoteId);
+            localStorage.setItem('markflow_currentView', currentView);
+            localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
+
+            if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
+                saveToGitHub();
+            }
+        }
+
+        function toggleZoomBox() {
+            document.getElementById('zoomControlBar').classList.toggle('collapsed');
+        }
+
+        function confirmRemoveAllData() {
+            const confirmDelete = confirm("⚠️ 【危险操作】您正在尝试清空全部书签、卡片与手帐笔记！是否确认彻底删除？");
+            if (confirmDelete) {
+                categories = [];
+                bookmarks = [];
+                notesList = [{ id: 1, title: "✨ 空白手帐页", content: "<p></p>" }];
+                activeNoteId = 1;
+                cardPositions = {};
+                
+                localStorage.clear();
+                persistState();
+                
+                switchView('bookmarks', 'all', null);
+                alert("🧹 数据已全部安全清空！");
+            }
+        }
+
+        function toggleSidebar() {
+            sidebarCollapsed = !sidebarCollapsed;
+            document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+        }
+
+        function toggleBookmarkMenu(e) {
+            e.stopPropagation();
+            bookmarkMenuCollapsed = !bookmarkMenuCollapsed;
+            updateSidebar();
+        }
+
+        function toggleNotesMenuState(e) {
+            e.stopPropagation();
+            notesMenuCollapsed = !notesMenuCollapsed;
+            updateSidebar();
+        }
+
+        function toggleStickerPanel() {
+            const panel = document.getElementById('stickerPanel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function insertEmoji(emoji) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(emoji));
+            autoSaveState();
+        }
+
+        function updateSidebar() {
+            const menuList = document.getElementById('menuList');
+            const cats = getAllCategories();
+            const isAllActive = (currentView === 'bookmarks' && currentCategory === 'all');
+            const isNotesActive = (currentView === 'notes');
+
+            let html = `
+                <div class="menu-item ${isAllActive ? 'active' : ''} ${bookmarkMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('bookmarks', 'all', event)">
+                    <span>🌐 <span class="menu-text">全部书签</span></span>
+                    <span class="arrow" onclick="toggleBookmarkMenu(event)">▾</span>
+                </div>
+                <div class="bookmark-sub-container ${bookmarkMenuCollapsed ? 'collapsed' : ''}">
+            `;
+
+            cats.forEach(cat => {
+                const isCatActive = (currentView === 'bookmarks' && currentCategory === cat);
+                html += `
+                    <div class="sub-menu-item ${isCatActive ? 'active' : ''}" onclick="switchView('bookmarks', '${cat}', event)">
+                        <div class="sub-menu-left">📁 <span class="menu-text">${cat}</span></div>
+                        <button class="sub-delete-btn" onclick="deleteCategory('${cat}', event)" title="删除分类">×</button>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+
+            html += `
+                <div class="menu-item ${isNotesActive ? 'active' : ''} ${notesMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('notes', ${notesList.length > 0 ? notesList[0].id : null}, event)">
+                    <span>📖 <span class="menu-text">手帐笔记</span></span>
+                    <span class="arrow" onclick="toggleNotesMenuState(event)">▾</span>
+                </div>
+                <div class="sub-menu-container ${notesMenuCollapsed ? 'collapsed' : ''}">
+            `;
+
+            notesList.forEach(note => {
+                const isActiveNote = (currentView === 'notes' && activeNoteId === note.id);
+                html += `
+                    <div class="sub-menu-item ${isActiveNote ? 'active' : ''}" onclick="switchView('notes', ${note.id}, event)">
+                        <div class="sub-menu-left">📄 <span class="menu-text">${note.title}</span></div>
+                        <button class="sub-delete-btn" onclick="deleteNote(${note.id}, event)" title="删除笔记">×</button>
+                    </div>
+                `;
+            });
+
+            html += `
+                    <button class="add-note-sub-btn" onclick="openNewNoteModal()">+ 新建页面</button>
+                </div>
+            `;
+
+            menuList.innerHTML = html;
+        }
+
+        function switchView(view, targetId, event) {
+            if (event) event.stopPropagation();
+            currentView = view;
+            const canvasWrapper = document.getElementById('canvasScrollWrapper');
+            const notesContainer = document.getElementById('notesContainer');
+            const topHeader = document.getElementById('topHeader');
+            const zoomBar = document.getElementById('zoomControlBar');
+
+            if (view === 'bookmarks') {
+                if (targetId !== null) currentCategory = targetId;
+                canvasWrapper.style.display = 'block';
+                notesContainer.style.display = 'none';
+                topHeader.style.display = 'flex';
+                zoomBar.style.display = 'flex';
+                renderBookmarks(bookmarks);
+            } else {
+                canvasWrapper.style.display = 'none';
+                notesContainer.style.display = 'flex';
+                topHeader.style.display = 'none';
+                zoomBar.style.display = 'none';
+
+                if (targetId !== null) activeNoteId = targetId;
+                else if (notesList.length > 0) activeNoteId = notesList[0].id;
+
+                const currentNoteObj = notesList.find(n => n.id === activeNoteId);
+                if (currentNoteObj) {
+                    document.getElementById('noteTitleInput').value = currentNoteObj.title;
+                    document.getElementById('noteBodyInput').innerHTML = currentNoteObj.content || '<p></p>';
+                }
+                updateStats();
+            }
+            persistState();
+            updateSidebar();
+        }
+
+        function autoSaveState() {
+            if (currentView === 'notes') {
+                const title = document.getElementById('noteTitleInput').value.trim() || '无标题页面';
+                const content = document.getElementById('noteBodyInput').innerHTML;
+                const note = notesList.find(n => n.id === activeNoteId);
+                if (note) {
+                    note.title = title;
+                    note.content = content;
+                    persistState();
+                    updateSidebar();
+                }
+            }
+        }
+
+        function updateStats() {
+            const text = document.getElementById('noteBodyInput').innerText || '';
+            document.getElementById('wordCountText').innerText = `字数: ${text.replace(/[\n\r\s]/g, '').length} 字`;
+            document.getElementById('lineCountText').innerText = `行数: ${text.split(/\r\n|\r|\n/).length} 行`;
+        }
+
+        function formatText(tag) {
+            document.getElementById('noteBodyInput').focus();
+            document.execCommand('formatBlock', false, tag === 'P' ? '<p>' : `<${tag}>`);
+            autoSaveState();
+        }
+
+        function deleteNote(id, event) {
+            event.stopPropagation();
+            if (notesList.length <= 1) { alert('至少需要保留一个手帐页面。'); return; }
+            if (confirm('确定要删除这个手帐页面吗？')) {
+                notesList = notesList.filter(n => n.id !== id);
+                if (activeNoteId === id) activeNoteId = notesList[0].id;
+                persistState();
+                switchView('notes', activeNoteId);
+            }
+        }
+
+        function openNewNoteModal() {
+            document.getElementById('noteSubModal').style.display = 'flex';
+            document.getElementById('newNoteTitleInput').value = '';
+            document.getElementById('newNoteTitleInput').focus();
+        }
+
+        function confirmCreateNote() {
+            const title = document.getElementById('newNoteTitleInput').value.trim();
+            if (!title) { alert('请输入页面名称哦~'); return; }
+            const newId = notesList.length > 0 ? Math.max(...notesList.map(n => n.id)) + 1 : 1;
+            notesList.push({ id: newId, title: title, content: `<p></p>` });
+            closeModal();
+            persistState();
+            switchView('notes', newId);
+        }
+
+        // 🌟 核心防重叠排版算法：多列高度追踪网格 (Column-based Masonry Flow)
+        function computeLayoutPositions(catsToRender, data) {
+            const colWidth = 360;  // 每列占用的宽度（含间距）
+            const colCount = 3;    // 总共3列
+            const colHeights = [60, 60, 60]; // 记录每一列当前最高的高度
+            
+            catsToRender.forEach((groupName) => {
+                const items = data.filter(b => b.group === groupName);
+                // 根据书签数量计算卡片动态高度：标题(60) + 每个书签约(42) + 添加按钮(50) + 边距(40)
+                const estimatedHeight = 150 + items.length * 42;
+
+                // 寻找当前高度最小的那一列，将卡片塞进去，保证绝对不重叠
+                let minColIndex = 0;
+                for (let i = 1; i < colCount; i++) {
+                    if (colHeights[i] < colHeights[minColIndex]) {
+                        minColIndex = i;
+                    }
+                }
+
+                // 生成哈希轻微随机感（不写死，但固定位置）
+                let hash = 0;
+                for (let i = 0; i < groupName.length; i++) {
+                    hash = groupName.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const randXOffset = (Math.abs(hash) % 40) - 20;
+                const randRotate = ((hash % 20) / 10);
+
+                const x = 60 + minColIndex * colWidth + randXOffset;
+                const y = colHeights[minColIndex];
+
+                cardPositions[groupName] = {
+                    x: x,
+                    y: y,
+                    rotate: randRotate,
+                    height: estimatedHeight
+                };
+
+                // 更新该列的总高度（加上当前卡片高度及行间距 50px）
+                colHeights[minColIndex] += estimatedHeight + 50;
+            });
+        }
+
+        function renderBookmarks(data) {
+            const container = document.getElementById('bookmarkContainer');
+            container.innerHTML = '';
+            const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
+            
+            // 每次渲染前，动态计算防重叠布局网格
+            computeLayoutPositions(catsToRender, data);
+
+            catsToRender.forEach((groupName) => {
+                const items = data.filter(b => b.group === groupName);
+                const pos = cardPositions[groupName];
+
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card-group';
+                cardDiv.style.left = pos.x + 'px';
+                cardDiv.style.top = pos.y + 'px';
+                cardDiv.style.transform = `rotate(${pos.rotate}deg)`;
+
+                initDrag(cardDiv, groupName);
+
+                let cardHtml = `
+                    <div class="card-group-title">
+                        <span>${groupName}</span>
+                        <div class="card-group-right">
+                            <span class="count-badge">${items.length}</span>
+                            <button class="delete-card-btn" onclick="deleteCategory('${groupName}', event)" title="删除分类">×</button>
+                        </div>
+                    </div>
+                `;
+                
+                if (items.length === 0) {
+                    cardHtml += `<div class="empty-card-tip">暂无书签，快去添加吧~</div>`;
+                } else {
+                    items.forEach(item => {
+                        cardHtml += `
+                            <div class="bookmark-item">
+                                <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
+                                <div class="actions">
+                                    <button class="btn" onclick="deleteBookmark(${item.id})">删除</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                cardHtml += `<div class="card-add-btn" onclick="openBookmarkModalForGroup('${groupName}')"><span>+ 添加网页</span></div>`;
+                cardDiv.innerHTML = cardHtml;
+                container.appendChild(cardDiv);
+            });
+
+            updateSidebar();
+        }
+
+        function getAllCategories() {
+            const set = new Set(categories);
+            bookmarks.forEach(b => set.add(b.group));
+            return Array.from(set);
+        }
+
+        function initDrag(cardElement, groupName) {
+            let isDragging = false, startX, startY;
+            cardElement.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('.bookmark-item') || e.target.closest('.card-add-btn')) return;
+                isDragging = true;
+                startX = e.clientX - cardPositions[groupName].x;
+                startY = e.clientY - cardPositions[groupName].y;
+                cardElement.style.zIndex = 150;
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                cardPositions[groupName].x = e.clientX - startX;
+                cardPositions[groupName].y = e.clientY - startY;
+                cardElement.style.left = cardPositions[groupName].x + 'px';
+                cardElement.style.top = cardPositions[groupName].y + 'px';
+            });
+            window.addEventListener('mouseup', () => {
+                if (isDragging) { isDragging = false; cardElement.style.zIndex = 1; persistState(); }
+            });
+        }
+
+        function deleteBookmark(id) {
+            bookmarks = bookmarks.filter(b => b.id !== id);
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        function deleteCategory(groupName, event) {
+            if(event) event.stopPropagation();
+            if (confirm(`确定要删除“${groupName}”这个分类吗？`)) {
+                categories = categories.filter(c => c !== groupName);
+                bookmarks = bookmarks.filter(b => b.group !== groupName);
+                delete cardPositions[groupName];
+                if (currentCategory === groupName) currentCategory = 'all';
+                persistState();
+                renderBookmarks(bookmarks);
+            }
+        }
+
+        function openCardModal() {
+            document.getElementById('cardModal').style.display = 'flex';
+            document.getElementById('newCardGroupName').value = '';
+            document.getElementById('newCardGroupName').focus();
+        }
+
+        function openBookmarkModal() {
+            openBookmarkModalForGroup(currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认'));
+        }
+
+        function openBookmarkModalForGroup(groupName) {
+            document.getElementById('bookmarkModal').style.display = 'flex';
+            renderCategoryTags(groupName);
+            document.getElementById('bookmarkGroup').value = groupName;
+            document.getElementById('bookmarkTitle').value = '';
+            document.getElementById('bookmarkUrl').value = '';
+            document.getElementById('bookmarkTitle').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('bookmarkModal').style.display = 'none';
+            document.getElementById('cardModal').style.display = 'none';
+            document.getElementById('noteSubModal').style.display = 'none';
+            document.getElementById('gitHubModal').style.display = 'none';
+        }
+
+        function renderCategoryTags(defaultCat = '') {
+            const container = document.getElementById('categoryTagsContainer');
+            let html = '';
+            getAllCategories().forEach(cat => {
+                html += `<div class="category-tag ${cat === defaultCat ? 'selected' : ''}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
+            });
+            container.innerHTML = html;
+            selectedGroup = defaultCat;
+        }
+
+        let selectedGroup = '';
+        function selectTag(cat, element) {
+            document.querySelectorAll('.category-tag').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedGroup = cat;
+            document.getElementById('bookmarkGroup').value = cat;
+        }
+
+        function saveNewCardGroup() {
+            const groupName = document.getElementById('newCardGroupName').value.trim();
+            if (!groupName) { alert('请输入卡片分类名称哦~'); return; }
+            if (!categories.includes(groupName)) {
+                categories.push(groupName);
+            }
+            closeModal();
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        function saveBookmark() {
+            const title = document.getElementById('bookmarkTitle').value.trim();
+            const url = document.getElementById('bookmarkUrl').value.trim();
+            const group = document.getElementById('bookmarkGroup').value.trim() || selectedGroup || '未分类';
+            if (!title || !url) { alert('请填写完整的网站名称和链接哦~'); return; }
+            if (!categories.includes(group) && !getAllCategories().includes(group)) categories.push(group);
+
+            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
+            bookmarks.push({ id: newId, group, title, url });
+            closeModal();
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        // HTML 书签导入导出
+        function triggerImportHtml() { document.getElementById('importHtmlFile').click(); }
+        function allowGlobalDrag(e) { e.preventDefault(); }
+        function handleGlobalDrop(e) {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.name.endsWith('.html') || file.name.endsWith('.htm')) parseAndImportHtmlFile(file);
+            }
+        }
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            if (file) parseAndImportHtmlFile(file);
+            event.target.value = '';
+        }
+        function parseAndImportHtmlFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(e.target.result, 'text/html');
+                let importedCount = 0;
+                let currentFolder = '导入书签';
+                doc.querySelectorAll('h3, a').forEach(el => {
+                    if (el.tagName === 'H3') {
+                        currentFolder = el.textContent.trim() || '导入文件夹';
+                        if (!categories.includes(currentFolder)) categories.push(currentFolder);
+                    } else if (el.tagName === 'A') {
+                        const title = el.textContent.trim() || el.href;
+                        const url = el.href;
+                        if (url && url.startsWith('http') && !bookmarks.some(b => b.url === url)) {
+                            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
+                            bookmarks.push({ id: newId, group: currentFolder, title: title, url: url });
+                            importedCount++;
+                        }
+                    }
+                });
+                if (importedCount > 0) {
+                    persistState();
+                    renderBookmarks(bookmarks);
+                    alert(`✨ 成功导入 ${importedCount} 个书签！`);
+                }
+            };
+            reader.readAsText(file);
+        }
+        function exportHtmlBookmarks() {
+            let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
+            getAllCategories().forEach(cat => {
+                html += `    <DT><H3> ${cat} </H3>\n    <DL><p>\n`;
+                bookmarks.filter(b => b.group === cat).forEach(item => {
+                    html += `        <DT><A HREF="${item.url}">${item.title}</A>\n`;
+                });
+                html += `    </DL><p>\n`;
+            });
+            html += `</DL><p>\n`;
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MarkFlow_Bookmarks_${new Date().toISOString().slice(0,10)}.html`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        // GitHub 自动同步
+        function openGitHubModal() {
+            document.getElementById('gitHubModal').style.display = 'flex';
+            document.getElementById('ghOwnerInput').value = githubConfig.owner;
+            document.getElementById('ghRepoInput').value = githubConfig.repo;
+            document.getElementById('ghTokenInput').value = githubConfig.token;
+        }
+        function saveGitHubConfig() {
+            githubConfig.owner = document.getElementById('ghOwnerInput').value.trim();
+            githubConfig.repo = document.getElementById('ghRepoInput').value.trim();
+            githubConfig.token = document.getElementById('ghTokenInput').value.trim();
+            localStorage.setItem('markflow_gh_config', JSON.stringify(githubConfig));
+            closeModal();
+            loadFromGitHub();
+            alert("✨ GitHub 仓库配置已保存！");
+        }
+        async function loadFromGitHub() {
+            if (!githubConfig.token || !githubConfig.owner || !githubConfig.repo) return;
+            try {
+                const url = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
+                const response = await fetch(url, { headers: { 'Authorization': `Bearer ${githubConfig.token}` } });
+                if (response.ok) {
+                    const data = await response.json();
+                    const remoteData = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g, '')))));
+                    if (remoteData.categories) categories = remoteData.categories;
+                    if (remoteData.bookmarks) bookmarks = remoteData.bookmarks;
+                    if (remoteData.notesList) notesList = remoteData.notesList;
+                    if (remoteData.cardPositions) cardPositions = remoteData.cardPositions;
+                    persistState();
+                    switchView(currentView, currentView === 'notes' ? activeNoteId : currentCategory);
+                }
+            } catch (e) { console.error("GitHub 同步失败", e); }
+        }
+        async function saveToGitHub() {
+            if (!githubConfig.token || !githubConfig.owner || !githubConfig.repo) return;
+            const url = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
+            try {
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${githubConfig.token}` } });
+                let sha = getRes.ok ? (await getRes.json()).sha : undefined;
+                const payload = btoa(unescape(encodeURIComponent(JSON.stringify({ categories, bookmarks, notesList, cardPositions }, null, 2))));
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${githubConfig.token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Auto-save', content: payload, sha })
+                });
+            } catch (e) { console.error("保存到 GitHub 失败", e); }
+        }
+
+        function adjustZoom(delta) {
+            canvasZoomScale = Math.min(2.0, Math.max(0.3, canvasZoomScale + delta));
+            document.getElementById('bookmarkContainer').style.transform = `scale(${canvasZoomScale})`;
+        }
+        function resetZoom() { canvasZoomScale = 1.0; document.getElementById('bookmarkContainer').style.transform = `scale(1)`; }
+        function handleRightClickZoom(e) { e.preventDefault(); adjustZoom(-0.1); }
+
+        if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
+            loadFromGitHub();
+        }
+
+        // 初始化
+        switchView(currentView, currentView === 'notes' ? activeNoteId : currentCategory);
+    </script>
+</body>
+</html>
