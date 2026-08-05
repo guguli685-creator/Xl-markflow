@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MarkFlow - 沉浸手帐空间</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #fdfbf7;
@@ -16,7 +17,27 @@
             background-size: 28px 28px;
         }
 
-        /* 左侧菜单栏 */
+        /* 移动端顶部导航栏（PC默认隐藏，移动端媒体查询展示） */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 56px;
+            background: rgba(255, 248, 243, 0.95);
+            backdrop-filter: blur(4px);
+            border-bottom: 2px dashed #f2dfd6;
+            z-index: 120;
+            padding: 0 16px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .mobile-header h2 { font-size: 16px; color: #d48383; font-weight: 700; }
+        .mobile-menu-toggle {
+            background: #f4d6cc; border: none; color: #a34848;
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;
+        }
+
+        /* 左侧菜单栏（桌面端） */
         .sidebar {
             width: 260px;
             background: rgba(255, 248, 243, 0.95);
@@ -24,8 +45,8 @@
             display: flex;
             flex-direction: column;
             padding: 24px 16px;
-            z-index: 100;
-            transition: width 0.3s ease, padding 0.3s ease;
+            z-index: 130;
+            transition: width 0.3s ease, padding 0.3s ease, transform 0.3s ease;
             position: relative;
             box-shadow: 4px 0 20px rgba(210, 180, 160, 0.08);
             flex-shrink: 0;
@@ -952,9 +973,77 @@
         .modal-btn.cancel { background: #f0ded6; color: #8c7368; }
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
+
+        /* 移动端自适应媒体查询（完美适配手机端 UI 交互） */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .mobile-header { display: flex; }
+            .sidebar {
+                position: fixed;
+                top: 56px; left: -280px;
+                height: calc(100vh - 56px);
+                width: 280px !important;
+                z-index: 140;
+                transition: transform 0.3s ease;
+                box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+            }
+            .sidebar.mobile-open {
+                transform: translateX(280px);
+            }
+            .sidebar .toggle-btn { display: none; } /* 移动端隐藏折叠圆钮 */
+            .main-content {
+                margin-top: 56px;
+                height: calc(100vh - 56px);
+            }
+            .header {
+                padding: 12px 16px;
+            }
+            .search-box {
+                width: 100%;
+                font-size: 13px;
+                padding: 8px 14px;
+            }
+            .header-right {
+                right: 16px;
+                gap: 6px;
+            }
+            .add-card-btn-header, .sync-btn-header {
+                height: 32px;
+                padding: 0 10px;
+                font-size: 12px;
+            }
+            .add-btn-header {
+                width: 32px; height: 32px;
+                font-size: 16px;
+            }
+            .card-group {
+                width: 290px;
+            }
+            .search-fullscreen-view {
+                padding: 20px 20px;
+            }
+            .zoom-control-bar {
+                bottom: 20px; right: 20px;
+                padding: 4px 8px;
+            }
+            .zoom-icon-btn {
+                width: 28px; height: 28px;
+                font-size: 14px;
+            }
+            .modal {
+                width: 90vw;
+                padding: 18px;
+            }
+        }
     </style>
 </head>
 <body>
+
+    <!-- 移动端顶部导航栏 -->
+    <div class="mobile-header">
+        <h2>✨ MarkFlow 移动端空间</h2>
+        <button class="mobile-menu-toggle" onclick="toggleMobileSidebar()">☰</button>
+    </div>
 
     <!-- 左侧菜单栏 -->
     <div class="sidebar" id="sidebar">
@@ -963,7 +1052,7 @@
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         
-        <!-- 开源网站头像跳转卡片（置顶且在收起状态下优雅居中显示） -->
+        <!-- 开源网站头像跳转卡片 -->
         <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库">
             <img src="https://github.com/guguli685-creator.png" alt="Xl-markflow Logo" class="sidebar-avatar-img">
             <div class="sidebar-avatar-info">
@@ -974,7 +1063,7 @@
 
         <div id="menuList"></div>
 
-        <!-- 导入、导出及清空所有数据按钮（沉底） -->
+        <!-- 导入、导出及清空所有数据按钮 -->
         <div class="sidebar-bottom-actions">
             <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
             <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
@@ -1001,7 +1090,7 @@
         </div>
         
         <!-- 书签自由画布 -->
-        <div class="content-canvas" id="canvasScrollWrapper">
+        <div class="content-canvas" id="canvasScrollWrapper" onclick="closeMobileSidebarOnClickOutside(event)">
             <div id="bookmarkContainer"></div>
         </div>
 
@@ -1042,7 +1131,7 @@
         </div>
 
         <!-- 沉浸式手帐笔记专用写作页面 -->
-        <div class="content-canvas" id="notesContainer" style="display: none;">
+        <div class="content-canvas" id="notesContainer" style="display: none;" onclick="closeMobileSidebarOnClickOutside(event)">
             <div class="notes-page-immersive" id="notesPageBody" ondragover="allowDrop(event)" ondrop="handleDropSticker(event)" onclick="handlePageClick(event)">
                 
                 <!-- 富文本工具栏 -->
@@ -1087,7 +1176,7 @@
                 <input type="text" class="notes-editor-title" id="noteTitleInput" placeholder="输入页面大标题..." autocomplete="off" oninput="autoSaveState()">
 
                 <!-- 核心正文编辑区 -->
-                <div class="notes-editor-body" id="noteBodyInput" contenteditable="true" placeholder="在这里沉浸式地书写文章内容（支持从电脑直接拖拽图片到网页贴图）..." onkeydown="handleNoteKeyDown(event)" oninput="updateStats()"></div>
+                <div class="notes-editor-body" id="noteBodyInput" contenteditable="true" placeholder="在这里沉浸式地书写文章内容..." onkeydown="handleNoteKeyDown(event)" oninput="updateStats()"></div>
 
                 <!-- 底部字数/行数实时统计状态栏 -->
                 <div class="notes-status-bar">
@@ -1200,7 +1289,6 @@
         let currentSearchTab = 'bookmark';
         let verifiedTokenTemp = '';
 
-        // 页面刚加载时，如果用户已经绑定了仓库，自动从云端同步最新数据以实现自动刷新同步
         window.addEventListener('DOMContentLoaded', () => {
             fetchDataFromCloudRepo();
         });
@@ -1215,14 +1303,25 @@
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
 
-            // 触发自动同步到用户的私有仓库（包括生成并上传独立的书签 HTML 文件）
             syncDataToCloudRepo();
         }
 
-        // ================= 导入、导出及清空数据核心功能 =================
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
+        function closeMobileSidebarOnClickOutside(e) {
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
+                if (!e.target.closest('.sidebar') && !e.target.closest('.mobile-menu-toggle')) {
+                    sidebar.classList.remove('mobile-open');
+                }
+            }
+        }
+
         function generateBookmarksHtmlString() {
             let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
-            
             const cats = getAllCategories();
             cats.forEach(cat => {
                 htmlContent += `    <DT><H3>${cat}</H3>\n    <DL><p>\n`;
@@ -1318,9 +1417,7 @@
                 alert('🧹 所有数据已清空重置。');
             }
         }
-        // =========================================================================
 
-        // ================= GitHub 云端多用户私有仓库同步与自动 HTML 生成模块 =================
         function openGithubAuthModal() {
             document.getElementById('githubAuthModal').style.display = 'flex';
             document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || '';
@@ -1369,7 +1466,6 @@
             syncDataToCloudRepo();
         }
 
-        // 网页刷新时从云端拉取最新数据自动同步
         async function fetchDataFromCloudRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1406,7 +1502,6 @@
             const repo = localStorage.getItem('gh_target_repo');
             if (!token || !repo) return;
 
-            // 1. 同步主 JSON 数据
             const jsonPath = 'markflow-backup-data.json';
             const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
 
@@ -1416,14 +1511,12 @@
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
 
-            // 2. 同时在同目录下自动生成并同步书签 HTML 文件防止丢失
             const htmlPath = 'bookmarks-backup.html';
             const htmlUrl = `https://api.github.com/repos/${repo}/contents/${htmlPath}`;
             const htmlString = generateBookmarksHtmlString();
             const htmlEncoded = btoa(unescape(encodeURIComponent(htmlString)));
 
             try {
-                // 更新 JSON 文件
                 let jsonSha = '';
                 const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (getJsonRes.ok) {
@@ -1440,7 +1533,6 @@
                     })
                 });
 
-                // 更新 HTML 书签文件
                 let htmlSha = '';
                 const getHtmlRes = await fetch(htmlUrl, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (getHtmlRes.ok) {
@@ -1462,7 +1554,6 @@
                 console.error("云端同步失败：", err);
             }
         }
-        // =========================================================================
 
         function autoSaveState() {
             if (currentView === 'notes') {
@@ -1500,7 +1591,6 @@
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        /* 搜索全屏及标签页切换交互 */
         function openSearchFullscreen() {
             const view = document.getElementById('searchFullscreenView');
             view.style.display = 'flex';
@@ -1548,7 +1638,6 @@
         function renderFullscreenResults(keyword) {
             const listContainer = document.getElementById('searchResultsList');
             listContainer.innerHTML = '';
-
             const filtered = bookmarks.filter(b => b.title.toLowerCase().includes(keyword) || b.group.toLowerCase().includes(keyword) || b.url.toLowerCase().includes(keyword));
 
             if (filtered.length === 0) {
@@ -1572,7 +1661,6 @@
         function renderNotesSearchResults(keyword) {
             const listContainer = document.getElementById('notesSearchResultsList');
             listContainer.innerHTML = '';
-
             const filtered = notesList.filter(n => n.title.toLowerCase().includes(keyword) || (n.content && n.content.toLowerCase().includes(keyword)));
 
             if (filtered.length === 0) {
@@ -1948,6 +2036,11 @@
         function switchView(view, targetId, event) {
             if(event) event.stopPropagation();
             currentView = view;
+
+            // 移动端切换视图后自动收起左侧抽屉菜单
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+            }
 
             const bmContainer = document.getElementById('bookmarkContainer');
             const notesContainer = document.getElementById('notesContainer');
