@@ -17,7 +17,7 @@
             background-size: 28px 28px;
         }
 
-        /* 移动端顶部导航栏（PC默认隐藏，移动端媒体查询展示） */
+        /* 移动端顶部导航栏 */
         .mobile-header {
             display: none;
             position: fixed;
@@ -974,7 +974,7 @@
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
 
-        /* 移动端自适应媒体查询（完美适配手机端 UI 交互） */
+        /* 移动端自适应媒体查询（完美适配手机端 UI 交互与卡片防重叠瀑布流布局） */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             .mobile-header { display: flex; }
@@ -990,49 +990,84 @@
             .sidebar.mobile-open {
                 transform: translateX(280px);
             }
-            .sidebar .toggle-btn { display: none; } /* 移动端隐藏折叠圆钮 */
+            .sidebar .toggle-btn { display: none; }
             .main-content {
                 margin-top: 56px;
                 height: calc(100vh - 56px);
             }
             .header {
-                padding: 12px 16px;
+                padding: 10px 12px;
+                flex-direction: row;
+                justify-content: space-between;
+                gap: 8px;
+                background: rgba(253, 251, 247, 0.95);
             }
             .search-box {
-                width: 100%;
+                flex: 1;
+                width: auto;
                 font-size: 13px;
-                padding: 8px 14px;
+                padding: 8px 12px;
+                text-align: left;
             }
             .header-right {
-                right: 16px;
+                position: static;
+                right: auto;
+                width: auto;
+                display: flex;
+                align-items: center;
                 gap: 6px;
+                flex-shrink: 0;
             }
-            .add-card-btn-header, .sync-btn-header {
-                height: 32px;
-                padding: 0 10px;
-                font-size: 12px;
+            /* 无论是电脑端还是手机端，顶部操作按钮统一改用纯图标显示（无文字重叠） */
+            .sync-btn-header, .add-card-btn-header {
+                width: 36px;
+                height: 36px;
+                padding: 0;
+                border-radius: 50%;
+                font-size: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
+            .sync-btn-header span, .add-card-btn-header span { display: none; }
             .add-btn-header {
-                width: 32px; height: 32px;
-                font-size: 16px;
+                width: 36px; height: 36px;
+                font-size: 18px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            /* 手机端覆盖绝对定位和超大画布，采用自动流式垂直间距卡片排列 */
+            .content-canvas {
+                padding: 12px !important;
+                overflow-y: auto !important;
+            }
+            #bookmarkContainer {
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
+                transform: none !important;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
             }
             .card-group {
-                width: 290px;
-            }
-            .search-fullscreen-view {
-                padding: 20px 20px;
+                position: static !important;
+                width: 100% !important;
+                transform: none !important;
+                box-shadow: 0 4px 15px rgba(210, 185, 170, 0.15);
             }
             .zoom-control-bar {
-                bottom: 20px; right: 20px;
-                padding: 4px 8px;
+                display: none !important;
             }
-            .zoom-icon-btn {
-                width: 28px; height: 28px;
-                font-size: 14px;
+            .search-fullscreen-view {
+                padding: 20px 16px;
             }
             .modal {
-                width: 90vw;
+                width: 92vw;
                 padding: 18px;
+            }
+            .bookmark-item .actions {
+                opacity: 1;
             }
         }
     </style>
@@ -1041,14 +1076,14 @@
 
     <!-- 移动端顶部导航栏 -->
     <div class="mobile-header">
-        <h2>✨ MarkFlow 移动端空间</h2>
+        <h2>✨ MarkFlow</h2>
         <button class="mobile-menu-toggle" onclick="toggleMobileSidebar()">☰</button>
     </div>
 
     <!-- 左侧菜单栏 -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h2>✨ MarkFlow</h2>
+        
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         
@@ -1083,8 +1118,8 @@
         <div class="header" id="topHeader">
             <input type="text" class="search-box" placeholder="点击进入沉浸式书签与笔记综合检索..." id="searchInput" readonly onclick="openSearchFullscreen()">
             <div class="header-right">
-                <button class="sync-btn-header" onclick="openGithubAuthModal()" title="绑定GitHub云端仓库">☁️ 同步仓库</button>
-                <button class="add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建空白卡片分类">📁 新建卡片</button>
+                <button class="sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️<span>同步仓库</span></button>
+                <button class="add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建卡片">📁<span>新建卡片</span></button>
                 <button class="add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
             </div>
         </div>
@@ -2037,7 +2072,6 @@
             if(event) event.stopPropagation();
             currentView = view;
 
-            // 移动端切换视图后自动收起左侧抽屉菜单
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('mobile-open');
             }
@@ -2179,6 +2213,7 @@
             container.innerHTML = '';
 
             const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
+            const isMobile = window.innerWidth <= 768;
             
             catsToRender.forEach((groupName, index) => {
                 const items = data.filter(b => b.group === groupName);
@@ -2194,11 +2229,13 @@
 
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card-group';
-                cardDiv.style.left = pos.x + 'px';
-                cardDiv.style.top = pos.y + 'px';
-                cardDiv.style.transform = `rotate(${pos.rotate}deg)`;
-
-                initDrag(cardDiv, groupName);
+                
+                if (!isMobile) {
+                    cardDiv.style.left = pos.x + 'px';
+                    cardDiv.style.top = pos.y + 'px';
+                    cardDiv.style.transform = `rotate(${pos.rotate}deg)`;
+                    initDrag(cardDiv, groupName);
+                }
 
                 let cardHtml = `
                     <div class="card-group-title">
