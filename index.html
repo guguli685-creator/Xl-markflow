@@ -1030,6 +1030,31 @@
         }
         .folder-modal-close:hover { background: #e2ab9d; color: #fff; }
 
+        /* 密码明文/密文小眼睛框样式 */
+        .token-input-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        .token-input-wrapper input {
+            padding-right: 40px !important;
+        }
+        .token-eye-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            user-select: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .token-eye-btn:hover {
+            opacity: 1;
+        }
+
         /* 弹窗样式 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -1227,9 +1252,9 @@
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         
-        <!-- 开源网站头像跳转卡片 -->
+        <!-- 开源网站头像跳转卡片（使用 QQ 头像接口稳定直连，防止 Github 碎图） -->
         <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库">
-            <img src="https://github.com/guguli685-creator.png" alt="Xl-markflow Logo" class="sidebar-avatar-img">
+            <img src="https://q1.qlogo.cn/g?b=qq&nk=3478728818&s=640" alt="Xl-markflow Logo" class="sidebar-avatar-img" onerror="this.onerror=null;this.src='https://q2.qlogo.cn/headimg_dl?dst_uin=3478728818&spec=640';">
             <div class="sidebar-avatar-info">
                 <span class="sidebar-avatar-title">Xl-markflow</span>
                 <span class="sidebar-avatar-desc">开源手帐与书签空间</span>
@@ -1383,12 +1408,17 @@
     <!-- 优雅的轻提示 Toast -->
     <div class="toast-tip" id="toastTip">✨ 数据已自动保存并同步！</div>
 
-    <!-- GitHub 授权与仓库选择弹窗 -->
+    <!-- GitHub 授权与仓库选择弹窗（带小眼睛输入框） -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
             <h3>☁️ 绑定您的 GitHub 私有仓库</h3>
             <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入您的 Personal Access Token (需 repo 权限)，系统将自动加载您的私有/公开仓库供您选择。</p>
-            <input type="password" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off">
+            
+            <div class="token-input-wrapper">
+                <input type="password" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off">
+                <button type="button" class="token-eye-btn" onclick="toggleTokenVisibility()" title="显示/隐藏 Token">👁️</button>
+            </div>
+
             <button class="modal-btn confirm" style="width: 100%;" onclick="fetchUserRepositories()">加载我的仓库列表</button>
             
             <div id="repoSelectBox" style="display:none; flex-direction:column; gap:8px;">
@@ -1642,6 +1672,19 @@
                 persistState();
                 switchView('bookmarks', 'all');
                 alert('🧹 所有数据已清空重置。');
+            }
+        }
+
+        /* 切换 Token 小眼睛显隐状态 */
+        function toggleTokenVisibility() {
+            const input = document.getElementById('ghTokenInput');
+            const btn = document.querySelector('.token-eye-btn');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerText = '🙈';
+            } else {
+                input.type = 'password';
+                btn.innerText = '👁️';
             }
         }
 
@@ -2226,7 +2269,7 @@
 
                     const onTouchMove = (ev) => {
                         if (ev.touches.length === 1) {
-                            ev.preventDefault(); // 阻止手机默认页面滚屏，锁定并进行拖拽
+                            ev.preventDefault();
                             const t = ev.touches[0];
                             handleMove(t.clientX, t.clientY, ev);
                         }
