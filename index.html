@@ -1483,7 +1483,7 @@
         <img id="previewModalImg" alt="大图预览">
     </div>
 
-    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 本地修改已暂存</div>
+    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 操作已记录</div>
 
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
@@ -1806,6 +1806,7 @@
             manualSyncBackup();
         }
 
+        /* 修复后的绝对恢复命令：清空旧缓存并强制重新加载网页，确保完美应用最新云端备份 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1828,20 +1829,23 @@
                 const jsonString = decodeURIComponent(escape(atob(fileData.content)));
                 const bundle = JSON.parse(jsonString);
 
-                if (bundle.categories) categories = bundle.categories;
-                if (bundle.bookmarks) bookmarks = bundle.bookmarks;
-                if (bundle.notesList) notesList = bundle.notesList;
-                if (bundle.cardPositions) cardPositions = bundle.cardPositions;
-                if (bundle.customStickers) customStickers = bundle.customStickers;
-                if (bundle.frequentSearchTags) frequentSearchTags = bundle.frequentSearchTags;
+                // 先彻底清除本地旧缓存残留，防止样式或坐标冲突
+                localStorage.clear();
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_target_repo', repo);
 
-                persistState();
-                renderCustomStickers();
+                // 写入拉取到的最新数据
+                if (bundle.categories) localStorage.setItem('markflow_categories', JSON.stringify(bundle.categories));
+                if (bundle.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(bundle.bookmarks));
+                if (bundle.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bundle.notesList));
+                if (bundle.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(bundle.cardPositions));
+                if (bundle.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(bundle.customStickers));
+                if (bundle.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(bundle.frequentSearchTags));
+
+                alert('✨ 成功从仓库恢复所有数据！即将为您刷新网页加载最新状态...');
                 
-                currentCategory = 'all';
-                switchView('bookmarks', 'all', null);
-
-                alert('✨ 成功从仓库恢复所有书签和笔记数据，已刷新到全部书签板块！');
+                // 强制无缓存刷新网页，彻底解决旧样式和缓存残留问题
+                window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
