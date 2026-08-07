@@ -755,6 +755,28 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
+        /* 笔记专属信件提交保存按钮样式 */
+        .note-save-letter-btn {
+            background: #f4d6cc;
+            border: 1.5px solid #d48383;
+            color: #a34848;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .note-save-letter-btn:hover {
+            background: #e2ab9d;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
         .sticker-panel {
             display: none;
             background: rgba(255, 248, 243, 0.85);
@@ -1434,6 +1456,10 @@
                         <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="无序列表">• 列表</button>
                         <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="有序列表">1. 列表</button>
                     </div>
+                    <!-- 笔记专属信件图标保存按钮 -->
+                    <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">
+                        💌 <span>保存笔记.bj</span>
+                    </button>
                     <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
                 </div>
 
@@ -1801,7 +1827,7 @@
             alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
-        /* 从仓库恢复：专属双文件读取（data.fow + notes.bj），具备只读与安全更新机制、永不删除 */
+        /* 从仓库恢复：双文件独立加载 (data.fow + notes.bj) */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1851,7 +1877,7 @@
             }
         }
 
-        /* 手动备份到仓库：双文件独立安全更新（data.fow + notes.bj），只读与更新权限、严禁删除 */
+        /* 菜单栏主备份按钮：仅更新 data.fow（书签流） */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1861,61 +1887,93 @@
                 return;
             }
 
-            try {
-                // 1. 准备并更新 data.fow（书签、卡片、坐标、贴纸等）
-                const fowPath = 'data.fow';
-                const fowUrl = `https://api.github.com/repos/${repo}/contents/${fowPath}`;
-                const fowBundle = {
-                    categories, bookmarks, cardPositions, customStickers, frequentSearchTags,
-                    updatedAt: new Date().toISOString()
-                };
-                const fowEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(fowBundle, null, 2))));
+            const path = 'data.fow';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
-                let fowSha = '';
-                const fowGetRes = await fetch(fowUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (fowGetRes.ok) {
-                    const info = await fowGetRes.json();
-                    fowSha = info.sha;
+            const bundleData = {
+                categories, bookmarks, cardPositions, customStickers, frequentSearchTags,
+                updatedAt: new Date().toISOString()
+            };
+            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+            try {
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const info = await getRes.json();
+                    fileSha = info.sha;
                 }
-                await fetch(fowUrl, {
+                
+                const putRes = await fetch(url, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: '✨ MarkFlow 更新 data.fow 书签混合流',
-                        content: fowEncoded,
-                        sha: fowSha || undefined
+                        content: jsonEncoded,
+                        sha: fileSha || undefined
                     })
                 });
 
-                // 2. 准备并更新 notes.bj（手帐笔记板块专属文件）
-                const bjPath = 'notes.bj';
-                const bjUrl = `https://api.github.com/repos/${repo}/contents/${bjPath}`;
-                const bjBundle = {
-                    notesList,
-                    updatedAt: new Date().toISOString()
-                };
-                const bjEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bjBundle, null, 2))));
-
-                let bjSha = '';
-                const bjGetRes = await fetch(bjUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (bjGetRes.ok) {
-                    const info = await bjGetRes.json();
-                    bjSha = info.sha;
+                if (!putRes.ok) {
+                    alert('同步写入 data.fow 失败，请检查仓库权限。');
+                    return;
                 }
-                await fetch(bjUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '✨ MarkFlow 更新 notes.bj 笔记板块',
-                        content: bjEncoded,
-                        sha: bjSha || undefined
-                    })
-                });
 
-                alert('☁️ 手动备份成功！data.fow 与 notes.bj 已安全更新至私有仓库。');
+                alert('☁️ 书签备份成功！data.fow 已安全更新至私有仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
+            }
+        }
+
+        /* 笔记专属信件按钮：点击后专门负责更新 notes.bj 笔记文件 */
+        async function manualSyncNotesBj() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) {
+                alert('请先点击右上角☁️图标绑定您的 GitHub 仓库！');
+                openGithubAuthModal();
+                return;
+            }
+
+            autoSaveState(); // 确保当前正在写的笔记已存入内存
+
+            const path = 'notes.bj';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+            const bjBundle = {
+                notesList,
+                updatedAt: new Date().toISOString()
+            };
+            const bjEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bjBundle, null, 2))));
+
+            try {
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const info = await getRes.json();
+                    fileSha = info.sha;
+                }
+
+                const putRes = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '💌 MarkFlow 更新 notes.bj 专属笔记板块',
+                        content: bjEncoded,
+                        sha: fileSha || undefined
+                    })
+                });
+
+                if (!putRes.ok) {
+                    alert('同步写入 notes.bj 失败，请检查仓库权限。');
+                    return;
+                }
+
+                alert('💌 笔记保存成功！notes.bj 已成功更新至私有仓库。');
+                showToast();
+            } catch (err) {
+                alert('笔记保存失败，请检查网络或 Token 权限。');
             }
         }
 
