@@ -1608,7 +1608,7 @@
     </div>
 
     <script>
-        // 1. 绝对干净的初始化：没有任何预设默认标签
+        // 绝对干净：初始为空数组，绝不凭空捏造任何默认标签
         let frequentSearchTags = [];
 
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
@@ -1634,14 +1634,12 @@
         let editingCardOldName = '';
         let currentFolderModalGroup = '';
 
-        // 页面刚加载时，自动尝试从私有仓库拉取独立的 tags.json 配置文件
         window.addEventListener('DOMContentLoaded', async () => {
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
         });
 
-        // 从私有仓库拉取独立的 tags.json 配置文件
         async function fetchTagsFromJsonRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1659,7 +1657,7 @@
                     }
                 }
             } catch (err) {
-                console.log("仓库中暂无 tags.json 或拉取失败，保持空标签");
+                // 仓库暂无 tags.json 保持空数组
             }
         }
 
@@ -1939,7 +1937,7 @@
             }
         }
 
-        // 独立更新 tags.json 到私有仓库
+        // 独立更新 tags.json 文件到私有仓库
         async function updateTagsJsonInRepo(newTagsArray) {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1969,7 +1967,7 @@
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: `🏷️ 自动更新私有仓库中的 tags.json 标签文件`,
+                        message: `🏷️ 更新私有仓库中的 tags.json 标签文件`,
                         content: jsonEncoded,
                         sha: fileSha || undefined
                     })
@@ -2113,6 +2111,7 @@
             }
         }
 
+        // 严格死守：只有明确点击“+ 存为标签”按钮，才会把当前输入框的词收录为标签，并更新 tags.json
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2162,6 +2161,7 @@
             handleFullscreenSearch();
         }
 
+        // 纯粹检索：输入打字时绝不自动干涉标签数组
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
             renderFullscreenResults(keyword);
