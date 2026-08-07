@@ -1419,9 +1419,9 @@
             </div>
 
             <div class="frequent-search-bar">
-                <div class="frequent-title-label">📌 JS 固化标签：</div>
+                <div class="frequent-title-label">📌 自定义标签：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
-                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="点击后存为标签，并直接更新 JS/HTML 到私有仓库">+ 存为标签</button>
+                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库中的JS文件">+ 存为标签</button>
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
@@ -1608,7 +1608,7 @@
     </div>
 
     <script>
-        // JS 常驻固化标签（直接作为代码逻辑内置）
+        // 固化在 JS 代码里的自定义标签数组（网页自身的配置）
         let frequentSearchTags = ["github", "开发", "工具"];
 
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
@@ -1855,20 +1855,21 @@
                 }
 
                 if (!restoredAny) {
-                    alert('仓库中暂未发现 data.fow 或 notes.bj 配置文件。新手注册仓库保持空白属于正常现象。');
+                    alert('仓库中暂未发现 data.fow 或 notes.bj 配置文件。');
                     return;
                 }
 
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_target_repo', repo);
 
-                alert('✨ 成功从仓库恢复所有书签与笔记数据！即将强制刷新网页...');
+                alert('✨ 成功从仓库恢复所有数据！即将强制刷新网页...');
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
         }
 
+        // 绝对纯净的后台书签流备份（仅写入 data.fow，绝不把标签放进去）
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1906,33 +1907,29 @@
                 });
 
                 if (!putRes.ok) {
-                    alert('同步写入 data.fow 失败，请检查仓库权限。');
+                    alert('同步写入 data.fow 失败。');
                     return;
                 }
 
                 alert('☁️ 书签备份成功！data.fow 已安全更新至私有仓库。');
                 showToast();
             } catch(err) {
-                alert('备份失败，请检查网络或 Token 权限。');
+                alert('备份失败。');
             }
         }
 
-        // 核心更新主程序文件（通过 GitHub API 更新当前托管网页对应的 JS/HTML 文件本身）
+        // 核心：点击保存/删除标签时，直接更新私有仓库中的 index.html 源码文件里的 JS 标签数组！
         async function updateJsFileInRepo(newTagsArray) {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
             if (!token || !repo) {
-                // 如果未绑定过私有仓库，则直接本地生效并提示
-                return;
+                return; // 未绑定仓库则仅前端生效
             }
 
-            // 自动寻找当前网页在仓库中的主力文件（通常为 index.html 或 main.js）
-            // 此处直接提交更新当前整个页面的 HTML/JS 源码，并在其中把新标签数组动态织入
             const filePath = 'index.html'; 
             const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
 
             try {
-                // 1. 获取当前远端文件的 SHA
                 let fileSha = '';
                 const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (getRes.ok) {
@@ -1940,10 +1937,9 @@
                     fileSha = info.sha;
                 }
 
-                // 2. 动态抓取当前页面的完整 HTML 源码并把标签数组进行精准替换
                 let currentHtmlContent = document.documentElement.outerHTML;
                 
-                // 正则替换源码里的 let frequentSearchTags = [...]
+                // 正则精准定位并替换源码中的 let frequentSearchTags = [...] 数组
                 const targetPattern = /let frequentSearchTags\s*=\s*\[.*?\];/s;
                 const replacementStr = `let frequentSearchTags = ${JSON.stringify(newTagsArray)};`;
                 
@@ -1953,12 +1949,11 @@
 
                 const encodedContent = btoa(unescape(encodeURIComponent(currentHtmlContent)));
 
-                // 3. 提交更新到私有仓库
                 const putRes = await fetch(url, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: `🏷️ 自动更新 JS 中的自定义标签数组: ${newTagsArray.join(', ')}`,
+                        message: `🏷️ 自动更新 JS 代码中的标签配置: ${newTagsArray.join(', ')}`,
                         content: encodedContent,
                         sha: fileSha || undefined
                     })
@@ -2011,14 +2006,14 @@
                 });
 
                 if (!putRes.ok) {
-                    alert('同步写入 notes.bj 失败，请检查仓库权限。');
+                    alert('同步写入 notes.bj 失败。');
                     return;
                 }
 
                 alert('💌 笔记已成功保存至 notes.bj！');
                 showToast();
             } catch (err) {
-                alert('笔记保存失败，请检查网络或 Token 权限。');
+                alert('笔记保存失败。');
             }
         }
 
@@ -2100,7 +2095,7 @@
             }
         }
 
-        /* 只有点击“存为标签”这一刻：才写入 JS 标签数组，并直接去后台私有仓库更新代码 */
+        // 只有点击“存为标签”按钮时，才真正把标签写进 JS 数组，并去后台更新私有仓库中的 JS 文件
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2117,7 +2112,7 @@
             renderFrequentSearchTags();
             showToast();
             
-            // 触发后台私有仓库更新 JS 文件
+            // 直接更新私有仓库中的 JS 代码文件
             updateJsFileInRepo(frequentSearchTags);
         }
 
@@ -2126,7 +2121,7 @@
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
             renderFrequentSearchTags();
             
-            // 移除标签后同样实时更新私有仓库中的 JS 文件
+            // 删除标签后同样实时同步更新私有仓库中的 JS 文件
             updateJsFileInRepo(frequentSearchTags);
         }
 
