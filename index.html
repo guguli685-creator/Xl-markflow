@@ -1613,14 +1613,8 @@
         let currentCategory = localStorage.getItem('markflow_currentCategory') || 'all';
 
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
-        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {
-            "待办": { x: 50, y: 40, rotate: -1.5 },
-            "导航精品": { x: 410, y: 60, rotate: 2.2 },
-            "投资": { x: 770, y: 30, rotate: -0.6 },
-            "系统": { x: 120, y: 400, rotate: 1.5 }
-        };
+        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
 
-        /* 常用搜索标签初始化存储（默认加入几个实用标签） */
         let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["vpn", "github", "开发", "工具"];
 
         let bookmarkMenuCollapsed = false;
@@ -1671,7 +1665,6 @@
             }
         }
 
-        /* 升级：在导出 HTML 书签时加入 NOTE 备注属性，确保下次导入不丢失备注[span_0](start_span)[span_0](end_span) */
         function generateBookmarksHtmlString() {
             let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
             const cats = getAllCategories();
@@ -1702,7 +1695,6 @@
             showToast();
         }
 
-        /* 升级：解析导入的 HTML 时同步读取 NOTE 备注属性[span_1](start_span)[span_1](end_span) */
         function handleImportBookmarks(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1774,7 +1766,6 @@
             }
         }
 
-        /* 切换 Token 小眼睛显隐状态 */
         function toggleTokenVisibility() {
             const input = document.getElementById('ghTokenInput');
             const btn = document.querySelector('.token-eye-btn');
@@ -1975,7 +1966,6 @@
             document.getElementById('searchInput').value = '';
         }
 
-        /* 渲染常用搜索标签 */
         function renderFrequentSearchTags() {
             const wrapper = document.getElementById('frequentTagsWrapper');
             if (!wrapper) return;
@@ -1995,7 +1985,6 @@
             wrapper.innerHTML = html;
         }
 
-        /* 点击常用标签直接填入并触发快速跳转检索 */
         function clickFrequentTag(tag) {
             const input = document.getElementById('fullscreenSearchInput');
             if (input) {
@@ -2004,7 +1993,6 @@
             }
         }
 
-        /* 添加当前输入词为常用搜索标签 */
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2023,7 +2011,6 @@
             showToast();
         }
 
-        /* 删除常用标签 */
         function removeFrequentTag(tag, event) {
             event.stopPropagation();
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
@@ -2182,7 +2169,6 @@
             }
         }
 
-        /* 移动端点击直接往笔记中心粘贴贴纸 */
         function addStickerToNote(content, type) {
             const body = document.getElementById('notesPageBody');
             if(!body) return;
@@ -2236,7 +2222,6 @@
             }
         }
 
-        /* 移动端导入图片贴纸优化 */
         function importCustomSticker(event) {
             const file = event.target.files[0];
             if (file) {
@@ -2345,7 +2330,6 @@
             window.addEventListener('touchend', onMouseUp);
         }
 
-        /* 统一桌面与移动端触屏拖拽放置 */
         function makeElementInteractive(elm) {
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
             let longPressTimer = null;
@@ -2472,7 +2456,6 @@
             }
         });
 
-        /* 打开预览模态框 */
         function openImagePreview(src) {
             const modal = document.getElementById('imagePreviewModal');
             const modalImg = document.getElementById('previewModalImg');
@@ -2493,7 +2476,6 @@
             return Array.from(set);
         }
 
-        /* 渲染侧边栏列表 */
         function updateSidebar() {
             const menuList = document.getElementById('menuList');
             const cats = getAllCategories();
@@ -2687,7 +2669,6 @@
             switchView('notes', newId);
         }
 
-        /* 打开大文件夹悬浮窗 */
         function openFolderModal(groupName) {
             currentFolderModalGroup = groupName;
             document.getElementById('folderModalName').innerText = groupName;
@@ -2733,7 +2714,7 @@
             listContainer.innerHTML = html;
         }
 
-        /* 渲染卡片：主页卡片直接展示全部网址 */
+        /* 修复桌面端换设备或云端同步后卡片坐标丢失导致重叠混乱的 Bug */
         function renderBookmarks(data) {
             const container = document.getElementById('bookmarkContainer');
             container.innerHTML = '';
@@ -2744,11 +2725,12 @@
             catsToRender.forEach((groupName, index) => {
                 const items = data.filter(b => b.group === groupName);
                 
-                if (!cardPositions[groupName]) {
+                // 确保每个卡片在初始化或无坐标记录时拥有标准规范的默认网格布局坐标
+                if (!cardPositions[groupName] || typeof cardPositions[groupName].x !== 'number' || typeof cardPositions[groupName].y !== 'number') {
                     cardPositions[groupName] = {
-                        x: 100 + (index % 3) * 380 + (Math.random() * 30 - 15),
-                        y: 100 + Math.floor(index / 3) * 380 + (Math.random() * 30 - 15),
-                        rotate: (Math.random() * 4 - 2)
+                        x: 60 + (index % 4) * 370,
+                        y: 60 + Math.floor(index / 4) * 380,
+                        rotate: (index % 2 === 0 ? -1.2 : 1.5)
                     };
                 }
                 const pos = cardPositions[groupName];
@@ -2759,7 +2741,7 @@
                 if (!isMobile) {
                     cardDiv.style.left = pos.x + 'px';
                     cardDiv.style.top = pos.y + 'px';
-                    cardDiv.style.transform = `rotate(${pos.rotate}deg)`;
+                    cardDiv.style.transform = `rotate(${pos.rotate || 0}deg)`;
                     initDrag(cardDiv, groupName);
                 }
 
@@ -2809,7 +2791,6 @@
             updateSidebar();
         }
 
-        /* 拖拽与点击逻辑 */
         function initDrag(cardElement, groupName) {
             let isDragging = false;
             let hasMoved = false;
@@ -2947,7 +2928,6 @@
             renderBookmarks(bookmarks);
         }
 
-        /* 顶部全局添加按钮触发：允许自由选择分类 */
         function openBookmarkModal() {
             const targetCat = currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认');
             document.getElementById('bookmarkModalTitle').innerText = '✨ 添加新书签';
@@ -2961,7 +2941,6 @@
             document.getElementById('bookmarkTitle').focus();
         }
 
-        /* 主页卡片下的按钮触发：直接选中当前分类 */
         function openBookmarkModalForGroup(groupName, event) {
             if(event) event.stopPropagation();
             openBookmarkModal();
@@ -3072,10 +3051,12 @@
             }
             if (!categories.includes(groupName)) {
                 categories.push(groupName);
+                const allCats = getAllCategories();
+                const index = allCats.indexOf(groupName);
                 cardPositions[groupName] = {
-                    x: 100 + Math.random() * 200,
-                    y: 100 + Math.random() * 200,
-                    rotate: (Math.random() * 4 - 2)
+                    x: 60 + (index % 4) * 370,
+                    y: 60 + Math.floor(index / 4) * 380,
+                    rotate: 1.0
                 };
             }
             closeModal();
