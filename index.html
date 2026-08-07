@@ -1812,6 +1812,7 @@
             manualSyncBackup();
         }
 
+        /* 修复后的从仓库恢复函数：强制切回全部书签并重新渲染画布 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1843,8 +1844,12 @@
 
                 persistState();
                 renderCustomStickers();
-                switchView(currentView, currentCategory, null);
-                alert('✨ 成功从仓库恢复所有书签和笔记数据！');
+                
+                // 强制重置视角并切回“全部书签”刷新画布
+                currentCategory = 'all';
+                switchView('bookmarks', 'all', null);
+
+                alert('✨ 成功从仓库恢复所有书签和笔记数据，已刷新到全部书签板块！');
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
