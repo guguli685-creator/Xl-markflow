@@ -1548,7 +1548,13 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             fetchDataFromCloudRepo();
+            fixMobileTouchClickIssues();
         });
+
+        /* 针对移动端触摸/点击卡顿或失效的底层修复方法 */
+        function fixMobileTouchClickIssues() {
+            document.addEventListener('touchstart', function() {}, {passive: true});
+        }
 
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
@@ -1577,6 +1583,7 @@
             }
         }
 
+        /* 升级：在导出 HTML 书签时加入 NOTE 备注属性，确保下次导入不丢失备注 */
         function generateBookmarksHtmlString() {
             let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
             const cats = getAllCategories();
@@ -1584,7 +1591,8 @@
                 htmlContent += `    <DT><H3>${cat}</H3>\n    <DL><p>\n`;
                 const items = bookmarks.filter(b => b.group === cat);
                 items.forEach(item => {
-                    htmlContent += `        <DT><A HREF="${item.url}">${item.title}</A></DT>\n`;
+                    const noteAttr = item.note ? ` NOTE="${item.note.replace(/"/g, '&quot;')}"` : '';
+                    htmlContent += `        <DT><A HREF="${item.url}"${noteAttr}>${item.title}</A></DT>\n`;
                 });
                 htmlContent += `    </DL><p>\n`;
             });
@@ -1606,6 +1614,7 @@
             showToast();
         }
 
+        /* 升级：解析导入的 HTML 时同步读取 NOTE 备注属性 */
         function handleImportBookmarks(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1625,6 +1634,7 @@
                 links.forEach(a => {
                     const title = a.textContent.trim() || '未命名网页';
                     const url = a.getAttribute('href');
+                    const note = a.getAttribute('note') || '';
                     if (!url) return;
 
                     let groupName = '导入书签';
@@ -1645,14 +1655,14 @@
                     }
 
                     const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
-                    bookmarks.push({ id: newId, group: groupName, title, url, note: "" });
+                    bookmarks.push({ id: newId, group: groupName, title, url, note });
                     importedCount++;
                 });
 
                 event.target.value = '';
                 persistState();
                 renderBookmarks(bookmarks);
-                alert(`✨ 成功导入 ${importedCount} 个书签！`);
+                alert(`✨ 成功导入 ${importedCount} 个书签（含备注信息）！`);
             };
             reader.readAsText(file);
         }
@@ -2188,7 +2198,7 @@
             window.addEventListener('touchend', onMouseUp);
         }
 
-        /* 统一桌面与移动端触屏拖拽放置（彻底修复手机端无法拖拽花瓣） */
+        /* 统一桌面与移动端触屏拖拽放置 */
         function makeElementInteractive(elm) {
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
             let longPressTimer = null;
