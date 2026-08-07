@@ -1415,13 +1415,13 @@
                     <button class="search-tab-btn active" id="tabBookmarkBtn" onclick="switchSearchTab('bookmark')">🔖 书签</button>
                     <button class="search-tab-btn" id="tabNoteBtn" onclick="switchSearchTab('note')">📖 笔记</button>
                 </div>
-                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除记录</button>
+                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清空输入</button>
             </div>
 
             <div class="frequent-search-bar">
-                <div class="frequent-title-label">📌 常用搜索：</div>
+                <div class="frequent-title-label">📌 自定义标签：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
-                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="将当前输入词添加为常用标签">+ 存为标签</button>
+                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库中的 tags.json 文件">+ 存为标签</button>
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
@@ -1608,6 +1608,9 @@
     </div>
 
     <script>
+        // 1. 绝对干净的初始化：没有任何预设默认标签
+        let frequentSearchTags = [];
+
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
@@ -1621,9 +1624,6 @@
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
         let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
 
-        let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["github", "开发", "工具"];
-        let searchHistoryList = JSON.parse(localStorage.getItem('markflow_searchHistoryList')) || [];
-
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
         let selectedGroup = '';
@@ -1634,10 +1634,34 @@
         let editingCardOldName = '';
         let currentFolderModalGroup = '';
 
-        window.addEventListener('DOMContentLoaded', () => {
+        // 页面刚加载时，自动尝试从私有仓库拉取独立的 tags.json 配置文件
+        window.addEventListener('DOMContentLoaded', async () => {
             renderCustomStickers();
+            await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
         });
+
+        // 从私有仓库拉取独立的 tags.json 配置文件
+        async function fetchTagsFromJsonRepo() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return;
+
+            try {
+                const res = await fetch(`https://api.github.com/repos/${repo}/contents/tags.json`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const jsonContent = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                    if (jsonContent.tags && Array.isArray(jsonContent.tags)) {
+                        frequentSearchTags = jsonContent.tags;
+                    }
+                }
+            } catch (err) {
+                console.log("仓库中暂无 tags.json 或拉取失败，保持空标签");
+            }
+        }
 
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
@@ -1648,8 +1672,6 @@
             localStorage.setItem('markflow_currentCategory', currentCategory);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
-            localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
-            localStorage.setItem('markflow_searchHistoryList', JSON.stringify(searchHistoryList));
         }
 
         function toggleMobileSidebar() {
@@ -1759,8 +1781,6 @@
                 currentCategory = 'all';
                 customStickers = [];
                 cardPositions = {};
-                frequentSearchTags = ["github", "开发", "工具"];
-                searchHistoryList = [];
                 
                 persistState();
                 switchView('bookmarks', 'all');
@@ -1847,8 +1867,6 @@
                     if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
                     if (fowJson.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(fowJson.cardPositions));
                     if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
-                    if (fowJson.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(fowJson.frequentSearchTags));
-                    if (fowJson.searchHistoryList) localStorage.setItem('markflow_searchHistoryList', JSON.stringify(fowJson.searchHistoryList));
                     restoredAny = true;
                 }
 
@@ -1860,21 +1878,19 @@
                     restoredAny = true;
                 }
 
-                if (!restoredAny) {
-                    alert('仓库中暂未发现 data.fow 或 notes.bj 配置文件。新手注册仓库保持空白属于正常现象。');
-                    return;
-                }
+                await fetchTagsFromJsonRepo();
 
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_target_repo', repo);
 
-                alert('✨ 成功从仓库恢复所有书签与笔记数据！即将强制刷新网页...');
+                alert('✨ 成功从仓库恢复所有数据！即将强制刷新网页...');
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
         }
 
+        // 纯净的书签流备份（只管 data.fow）
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1888,7 +1904,7 @@
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             const bundleData = {
-                categories, bookmarks, cardPositions, customStickers, frequentSearchTags, searchHistoryList,
+                categories, bookmarks, cardPositions, customStickers,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -1912,14 +1928,60 @@
                 });
 
                 if (!putRes.ok) {
-                    alert('同步写入 data.fow 失败，请检查仓库权限。');
+                    alert('同步写入 data.fow 失败。');
                     return;
                 }
 
                 alert('☁️ 书签备份成功！data.fow 已安全更新至私有仓库。');
                 showToast();
             } catch(err) {
-                alert('备份失败，请检查网络或 Token 权限。');
+                alert('备份失败。');
+            }
+        }
+
+        // 独立更新 tags.json 到私有仓库
+        async function updateTagsJsonInRepo(newTagsArray) {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) {
+                showToast();
+                return;
+            }
+
+            const filePath = 'tags.json'; 
+            const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+
+            try {
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const info = await getRes.json();
+                    fileSha = info.sha;
+                }
+
+                const bundleData = {
+                    tags: newTagsArray,
+                    updatedAt: new Date().toISOString()
+                };
+                const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+                const putRes = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `🏷️ 自动更新私有仓库中的 tags.json 标签文件`,
+                        content: jsonEncoded,
+                        sha: fileSha || undefined
+                    })
+                });
+
+                if (putRes.ok) {
+                    showToast();
+                } else {
+                    alert('标签文件写入私有仓库失败，请检查 Token 权限。');
+                }
+            } catch (err) {
+                console.error("更新 tags.json 失败", err);
             }
         }
 
@@ -1962,14 +2024,14 @@
                 });
 
                 if (!putRes.ok) {
-                    alert('同步写入 notes.bj 失败，请检查仓库权限。');
+                    alert('同步写入 notes.bj 失败。');
                     return;
                 }
 
                 alert('💌 笔记已成功保存至 notes.bj！');
                 showToast();
             } catch (err) {
-                alert('笔记保存失败，请检查网络或 Token 权限。');
+                alert('笔记保存失败。');
             }
         }
 
@@ -2026,21 +2088,13 @@
         function renderFrequentSearchTags() {
             const wrapper = document.getElementById('frequentTagsWrapper');
             if (!wrapper) return;
-            let displayList = [...frequentSearchTags];
-            // 实时将最近的搜索历史也合并展示或作为标签参考
-            searchHistoryList.forEach(item => {
-                if (!displayList.includes(item)) {
-                    displayList.unshift(item);
-                }
-            });
-            displayList = displayList.slice(0, 10); // 限制最多展示10个
-
-            if (displayList.length === 0) {
-                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无常用标签或历史记录，输入关键词后点击“存为标签”添加</span>`;
+            
+            if (frequentSearchTags.length === 0) {
+                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无标签，输入关键词后点击“存为标签”添加</span>`;
                 return;
             }
             let html = '';
-            displayList.forEach(tag => {
+            frequentSearchTags.forEach(tag => {
                 html += `
                     <div class="frequent-tag-pill">
                         <span onclick="clickFrequentTag('${tag}')">${tag}</span>
@@ -2072,17 +2126,15 @@
                 return;
             }
             frequentSearchTags.push(val);
-            persistState();
             renderFrequentSearchTags();
-            showToast();
+            updateTagsJsonInRepo(frequentSearchTags);
         }
 
         function removeFrequentTag(tag, event) {
             event.stopPropagation();
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
-            searchHistoryList = searchHistoryList.filter(t => t !== tag);
-            persistState();
             renderFrequentSearchTags();
+            updateTagsJsonInRepo(frequentSearchTags);
         }
 
         function switchSearchTab(tabName) {
@@ -2107,25 +2159,11 @@
 
         function clearSearchHistoryInput() {
             document.getElementById('fullscreenSearchInput').value = '';
-            searchHistoryList = [];
-            persistState();
-            renderFrequentSearchTags();
             handleFullscreenSearch();
         }
 
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
-            
-            // 记录搜索历史
-            if (keyword && keyword.length > 0) {
-                if (!searchHistoryList.includes(keyword)) {
-                    searchHistoryList.unshift(keyword);
-                    if (searchHistoryList.length > 15) searchHistoryList.pop();
-                    persistState();
-                    renderFrequentSearchTags();
-                }
-            }
-
             renderFullscreenResults(keyword);
             renderNotesSearchResults(keyword);
         }
