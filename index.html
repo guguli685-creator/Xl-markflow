@@ -1629,6 +1629,69 @@
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
             localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
+
+            // 用户添加网页或修改数据时，在后台静默自动备份，不弹窗打扰用户
+            silentSyncToCloudRepo();
+        }
+
+        /* 后台静默自动备份函数（无感增量更新） */
+        async function silentSyncToCloudRepo() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return; // 未绑定仓库则跳过静默备份
+
+            const jsonPath = 'markflow-backup-data.json';
+            const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
+
+            const bundleData = {
+                categories, bookmarks, notesList, cardPositions, customStickers, frequentSearchTags,
+                updatedAt: new Date().toISOString()
+            };
+            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+            const htmlPath = 'bookmarks-backup.html';
+            const htmlUrl = `https://api.github.com/repos/${repo}/contents/${htmlPath}`;
+            const htmlString = generateBookmarksHtmlString();
+            const htmlEncoded = btoa(unescape(encodeURIComponent(htmlString)));
+
+            try {
+                let jsonSha = '';
+                const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getJsonRes.ok) {
+                    const info = await getJsonRes.json();
+                    jsonSha = info.sha;
+                }
+                await fetch(jsonUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ MarkFlow 后台静默增量自动备份',
+                        content: jsonEncoded,
+                        sha: jsonSha || undefined
+                    })
+                });
+
+                let htmlSha = '';
+                const getHtmlRes = await fetch(htmlUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getHtmlRes.ok) {
+                    const info = await getHtmlRes.json();
+                    htmlSha = info.sha;
+                }
+                await fetch(htmlUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ MarkFlow 后台静默增量备份 HTML 书签',
+                        content: htmlEncoded,
+                        sha: htmlSha || undefined
+                    })
+                });
+
+                // 增量备份完更新，弹轻提示窗即可（Toast）
+                showToast();
+            } catch(err) {
+                console.error("后台静默备份失败：", err);
+            }
         }
 
         function toggleMobileSidebar() {
