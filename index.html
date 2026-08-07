@@ -1581,7 +1581,7 @@
     </div>
 
     <script>
-        // 彻底遗忘默认死数据：若本地没有记录，则初始化为空，完全由云端双线备份（JSON/HTML）掌控
+        // 纯净零初始状态：无任何硬编码的内置死数据
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
@@ -1799,6 +1799,7 @@
             manualSyncBackup();
         }
 
+        /* 从仓库恢复：只认准仓库里的 .json 文件，彻底消除 HTML 冲突和冗余残留 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1814,7 +1815,7 @@
             try {
                 const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) {
-                    alert('未能在仓库中找到备份数据文件，请先进行一次手动备份。');
+                    alert('未能在仓库中找到备份数据文件 (markflow-backup-data.json)，请先进行一次手动备份。');
                     return;
                 }
                 const fileData = await res.json();
@@ -1839,6 +1840,7 @@
             }
         }
 
+        /* 手动备份到仓库：只精准更新 markflow-backup-data.json 文件，彻底摆脱 html 冲突 */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1857,11 +1859,6 @@
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
 
-            const htmlPath = 'bookmarks-backup.html';
-            const htmlUrl = `https://api.github.com/repos/${repo}/contents/${htmlPath}`;
-            const htmlString = generateBookmarksHtmlString();
-            const htmlEncoded = btoa(unescape(encodeURIComponent(htmlString)));
-
             try {
                 let jsonSha = '';
                 const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1873,29 +1870,13 @@
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 手动点击保存备份',
+                        message: '✨ MarkFlow 更新 JSON 数据备份',
                         content: jsonEncoded,
                         sha: jsonSha || undefined
                     })
                 });
 
-                let htmlSha = '';
-                const getHtmlRes = await fetch(htmlUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getHtmlRes.ok) {
-                    const info = await getHtmlRes.json();
-                    htmlSha = info.sha;
-                }
-                await fetch(htmlUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '✨ MarkFlow 手动备份 HTML 书签',
-                        content: htmlEncoded,
-                        sha: htmlSha || undefined
-                    })
-                });
-
-                alert('☁️ 手动备份成功！所有数据已绝对覆盖保存至 GitHub 仓库。');
+                alert('☁️ 手动备份成功！JSON 数据已成功更新至 GitHub 私有仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
