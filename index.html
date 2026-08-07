@@ -726,7 +726,7 @@
         }
         .tool-btn {
             background: #fffbf8;
-            border: 1px solid #ecd5cc;
+            border: 1.5px solid #ecd5cc;
             color: #8c7368;
             padding: 6px 10px;
             border-radius: 8px;
@@ -1342,10 +1342,10 @@
 
         <div class="sidebar-bottom-actions">
             <button class="sidebar-action-btn sync-primary" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
-                💾 <span>手动备份到仓库</span>
+                💾 <span>手动备份到仓库</span>[span_0](start_span)[span_0](end_span)
             </button>
             <button class="sidebar-action-btn" onclick="manualRestoreFromRepo()" title="从仓库恢复所有书签和笔记">
-                ☁️ <span>从仓库恢复网页</span>
+                ☁️ <span>从仓库恢复网页</span>[span_1](start_span)[span_1](end_span)
             </button>
             <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
             <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
@@ -1581,18 +1581,11 @@
     </div>
 
     <script>
-        let categories = JSON.parse(localStorage.getItem('markflow_categories')) || ["待办", "导航精品", "投资", "系统"];
-        let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [
-            { id: 1, group: "待办", title: "Android 移动应用开发者工具", url: "https://developer.android.com", note: "" },
-            { id: 2, group: "待办", title: "Typora - simple yet powerful...", url: "https://typora.io", note: "" },
-            { id: 3, group: "导航精品", title: "Tbox导航 | 只收录优质在线工具...", url: "https://www.tboxn.com", note: "" },
-            { id: 4, group: "投资", title: "VeighNa量化社区 - 你的开源...", url: "https://vnpy.com", note: "" },
-            { id: 5, group: "系统", title: "GitHub", url: "https://github.com", note: "" }
-        ];
-
+        // 彻底遗忘默认死数据：在全新环境/清空缓存时处于绝对零状态，完全由云端备份或用户初次录入决定
+        let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
+        let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
-            { id: 1, title: "🌸 我的手帐日常", content: "<p></p>" },
-            { id: 2, title: "💡 灵感备忘录", content: "<p></p>" }
+            { id: 1, title: "🌸 我的手帐日常", content: "<p></p>" }
         ];
         
         let activeNoteId = parseInt(localStorage.getItem('markflow_activeNoteId')) || 1;
@@ -1602,7 +1595,7 @@
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
         let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
 
-        let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["vpn", "github", "开发", "工具"];
+        let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["github", "开发", "工具"];
 
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
@@ -1730,7 +1723,7 @@
         function clearAllData() {
             if (confirm('⚠️ 警告：清空操作将删除所有的书签、卡片分类以及手帐笔记数据，且无法恢复！确定要继续吗？')) {
                 localStorage.clear();
-                categories = ["待办", "导航精品", "投资", "系统"];
+                categories = [];
                 bookmarks = [];
                 notesList = [{ id: 1, title: "🌸 我的手帐日常", content: "<p></p>" }];
                 activeNoteId = 1;
@@ -1738,7 +1731,7 @@
                 currentCategory = 'all';
                 customStickers = [];
                 cardPositions = {};
-                frequentSearchTags = ["vpn", "github", "开发", "工具"];
+                frequentSearchTags = ["github", "开发", "工具"];
                 
                 persistState();
                 switchView('bookmarks', 'all');
@@ -1806,7 +1799,7 @@
             manualSyncBackup();
         }
 
-        /* 修复后的绝对恢复命令：清空旧缓存并强制重新加载网页，确保完美应用最新云端备份 */
+        /* 绝对恢复命令：精准识别云端私有仓库中的 json 文件并彻底覆盖本地，实现换手机无缝恢复 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1829,12 +1822,12 @@
                 const jsonString = decodeURIComponent(escape(atob(fileData.content)));
                 const bundle = JSON.parse(jsonString);
 
-                // 先彻底清除本地旧缓存残留，防止样式或坐标冲突
+                // 彻底清空旧缓存，防止默认死数据干扰
                 localStorage.clear();
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_target_repo', repo);
 
-                // 写入拉取到的最新数据
+                // 将云端最新配置强行覆盖写入本地存储
                 if (bundle.categories) localStorage.setItem('markflow_categories', JSON.stringify(bundle.categories));
                 if (bundle.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(bundle.bookmarks));
                 if (bundle.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bundle.notesList));
@@ -1842,9 +1835,9 @@
                 if (bundle.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(bundle.customStickers));
                 if (bundle.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(bundle.frequentSearchTags));
 
-                alert('✨ 成功从仓库恢复所有数据！即将为您刷新网页加载最新状态...');
+                alert('✨ 成功从云端恢复所有数据！即将为您强制刷新网页...');
                 
-                // 强制无缓存刷新网页，彻底解决旧样式和缓存残留问题
+                // 强制无缓存重载，确保完美呈现云端最新状态
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
