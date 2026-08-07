@@ -1342,10 +1342,10 @@
 
         <div class="sidebar-bottom-actions">
             <button class="sidebar-action-btn sync-primary" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
-                💾 <span>手动备份到仓库</span>[span_2](start_span)[span_2](end_span)
+                💾 <span>手动备份到仓库</span>[span_1](start_span)[span_1](end_span)
             </button>
             <button class="sidebar-action-btn" onclick="manualRestoreFromRepo()" title="从仓库恢复所有书签和笔记">
-                ☁️ <span>从仓库恢复网页</span>[span_3](start_span)[span_3](end_span)
+                ☁️ <span>从仓库恢复网页</span>[span_2](start_span)[span_2](end_span)
             </button>
             <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
             <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
@@ -1619,7 +1619,7 @@
             switchView(currentView, currentCategory, null);
         });
 
-        /* 纯本地存储：绝对不进行任何后台静默自动上传，保护云端备份不被误删污染 */
+        /* 纯本地存储：绝对不触发任何后台自动静默同步 */
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
             localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
@@ -1807,7 +1807,7 @@
             manualSyncBackup();
         }
 
-        /* 绝对命令：只有点击“从仓库恢复网页”按钮时才会从云端拉取覆盖[span_4](start_span)[span_4](end_span) */
+        /* 绝对命令：只有点击“从仓库恢复网页”按钮时才会从云端拉取覆盖[span_3](start_span)[span_3](end_span) */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1849,7 +1849,7 @@
             }
         }
 
-        /* 绝对命令：只有点击“手动备份到仓库”按钮时才是真正的更新[span_5](start_span)[span_5](end_span) */
+        /* 绝对命令：只有点击“手动备份到仓库”按钮时才是真正的更新[span_4](start_span)[span_4](end_span) */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
