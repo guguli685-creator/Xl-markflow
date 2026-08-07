@@ -1410,7 +1410,7 @@
             </div>
 
             <div class="search-section-panel" id="panelNote">
-                <div class="section-title">📖 笔记检索结果（点击跳转到对应页面）</div>
+                <div class="section-title">📖 笔记检索结果 (点击跳转到对应页面)</div>
                 <div class="search-results-list" id="notesSearchResultsList"></div>
             </div>
         </div>
@@ -1801,7 +1801,7 @@
             alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
-        /* 从仓库恢复：专属识别并读取 data.fow 混合流配置文件，只读不删 */
+        /* 从仓库恢复：专属双文件读取（data.fow + notes.bj），具备只读与安全更新机制、永不删除 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1811,38 +1811,47 @@
                 return;
             }
 
-            const path = 'data.fow';
-            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-
             try {
-                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!res.ok) {
-                    alert('未能在仓库中找到 data.fow 配置文件。如果是新手用户，当前仓库为空白属于正常状态。');
+                let restoredAny = false;
+
+                // 1. 读取书签与卡片混合流文件 data.fow
+                const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (fowRes.ok) {
+                    const fowData = await fowRes.json();
+                    const fowJson = JSON.parse(decodeURIComponent(escape(atob(fowData.content))));
+                    if (fowJson.categories) localStorage.setItem('markflow_categories', JSON.stringify(fowJson.categories));
+                    if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
+                    if (fowJson.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(fowJson.cardPositions));
+                    if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
+                    if (fowJson.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(fowJson.frequentSearchTags));
+                    restoredAny = true;
+                }
+
+                // 2. 读取独立手帐笔记板块文件 notes.bj
+                const bjRes = await fetch(`https://api.github.com/repos/${repo}/contents/notes.bj`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (bjRes.ok) {
+                    const bjData = await bjRes.json();
+                    const bjJson = JSON.parse(decodeURIComponent(escape(atob(bjData.content))));
+                    if (bjJson.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bjJson.notesList));
+                    restoredAny = true;
+                }
+
+                if (!restoredAny) {
+                    alert('仓库中暂未发现 data.fow 或 notes.bj 配置文件。新手注册仓库保持空白属于正常现象。');
                     return;
                 }
-                const fileData = await res.json();
-                const jsonString = decodeURIComponent(escape(atob(fileData.content)));
-                const bundle = JSON.parse(jsonString);
 
-                localStorage.clear();
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_target_repo', repo);
 
-                if (bundle.categories) localStorage.setItem('markflow_categories', JSON.stringify(bundle.categories));
-                if (bundle.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(bundle.bookmarks));
-                if (bundle.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bundle.notesList));
-                if (bundle.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(bundle.cardPositions));
-                if (bundle.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(bundle.customStickers));
-                if (bundle.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(bundle.frequentSearchTags));
-
-                alert('✨ 成功从 data.fow 混合流文件恢复所有数据！即将强制刷新网页...');
+                alert('✨ 成功从仓库恢复所有书签与笔记数据！即将强制刷新网页...');
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
         }
 
-        /* 手动备份到仓库：仅创建或更新同目录下的专属 data.fow 文件（具有只读更新权限、禁止删除） */
+        /* 手动备份到仓库：双文件独立安全更新（data.fow + notes.bj），只读与更新权限、严禁删除 */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1852,39 +1861,58 @@
                 return;
             }
 
-            const path = 'data.fow';
-            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-
-            const bundleData = {
-                categories, bookmarks, notesList, cardPositions, customStickers, frequentSearchTags,
-                updatedAt: new Date().toISOString()
-            };
-            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
-
             try {
-                let fileSha = '';
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) {
-                    const info = await getRes.json();
-                    fileSha = info.sha; // 仅获取 SHA 用于安全更新，绝不执行删除
+                // 1. 准备并更新 data.fow（书签、卡片、坐标、贴纸等）
+                const fowPath = 'data.fow';
+                const fowUrl = `https://api.github.com/repos/${repo}/contents/${fowPath}`;
+                const fowBundle = {
+                    categories, bookmarks, cardPositions, customStickers, frequentSearchTags,
+                    updatedAt: new Date().toISOString()
+                };
+                const fowEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(fowBundle, null, 2))));
+
+                let fowSha = '';
+                const fowGetRes = await fetch(fowUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (fowGetRes.ok) {
+                    const info = await fowGetRes.json();
+                    fowSha = info.sha;
                 }
-                
-                const putRes = await fetch(url, {
+                await fetch(fowUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 混合流数据更新 data.fow',
-                        content: jsonEncoded,
-                        sha: fileSha || undefined
+                        message: '✨ MarkFlow 更新 data.fow 书签混合流',
+                        content: fowEncoded,
+                        sha: fowSha || undefined
                     })
                 });
 
-                if (!putRes.ok) {
-                    alert('同步写入 data.fow 失败，请检查仓库权限。');
-                    return;
-                }
+                // 2. 准备并更新 notes.bj（手帐笔记板块专属文件）
+                const bjPath = 'notes.bj';
+                const bjUrl = `https://api.github.com/repos/${repo}/contents/${bjPath}`;
+                const bjBundle = {
+                    notesList,
+                    updatedAt: new Date().toISOString()
+                };
+                const bjEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bjBundle, null, 2))));
 
-                alert('☁️ 手动备份成功！混合流配置文件 data.fow 已安全更新至私有仓库。');
+                let bjSha = '';
+                const bjGetRes = await fetch(bjUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (bjGetRes.ok) {
+                    const info = await bjGetRes.json();
+                    bjSha = info.sha;
+                }
+                await fetch(bjUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ MarkFlow 更新 notes.bj 笔记板块',
+                        content: bjEncoded,
+                        sha: bjSha || undefined
+                    })
+                });
+
+                alert('☁️ 手动备份成功！data.fow 与 notes.bj 已安全更新至私有仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
