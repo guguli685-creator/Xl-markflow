@@ -1632,7 +1632,6 @@
             fixMobileTouchClickIssues();
         });
 
-        /* 针对移动端触摸/点击卡顿或失效的底层修复方法 */
         function fixMobileTouchClickIssues() {
             document.addEventListener('touchstart', function() {}, {passive: true});
         }
