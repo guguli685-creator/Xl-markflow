@@ -45,7 +45,7 @@
             background-size: 28px 28px;
         }
 
-        /* 移动端顶部导航栏（渐进式模糊） */
+        /* 移动端顶部导航栏 */
         .mobile-header {
             display: none;
             position: fixed;
@@ -90,7 +90,7 @@
         
         .header-action-btn:hover, .mobile-menu-toggle:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
 
-        /* 左侧菜单栏（桌面端，渐进式模糊） */
+        /* 左侧菜单栏（桌面端） */
         .sidebar {
             width: 260px;
             background: linear-gradient(135deg, rgba(255, 248, 243, 0.95), rgba(253, 245, 238, 0.85));
@@ -378,7 +378,7 @@
             color: #fff;
         }
 
-        /* 右侧主内容区（桌面端弹性自适应布局） */
+        /* 右侧主内容区 */
         .main-content {
             flex: 1;
             display: flex;
@@ -387,7 +387,6 @@
             position: relative;
             width: 100%;
         }
-        /* 顶部标题栏（渐进式模糊） */
         .header {
             padding: 20px 36px;
             display: flex;
@@ -401,7 +400,6 @@
             gap: 16px;
         }
         
-        /* 丝滑 GPU 加速搜索框样式 */
         .search-box {
             background: #fff;
             border: 2px solid #ecd5cc;
@@ -434,7 +432,6 @@
             flex-shrink: 0;
         }
 
-        /* 沉浸式独立综合搜索全屏页面（渐进式模糊过渡底色） */
         .search-fullscreen-view {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -532,7 +529,6 @@
             border-color: #a34848;
         }
 
-        /* 常用搜索标签区域样式 */
         .frequent-search-bar {
             display: flex;
             align-items: center;
@@ -657,7 +653,6 @@
         .search-result-url { font-size: 12px; color: #b5a49c; word-break: break-all; line-height: 1.4; }
         .search-result-badge { font-size: 12px; background: #faede6; color: #d48383; padding: 4px 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 
-        /* 极简纯图标缩放栏（渐进式模糊） */
         .zoom-control-bar {
             position: absolute;
             bottom: 30px;
@@ -717,7 +712,6 @@
             position: relative;
         }
         
-        /* 优雅横排工具栏（渐进式模糊） */
         .notes-toolbar {
             display: flex;
             justify-content: space-between;
@@ -769,7 +763,6 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 苹果风格底部悬浮 Dock 素材栏（深度渐进式模糊） */
         .sticker-panel {
             display: none;
             background: rgba(255, 248, 243, 0.85);
@@ -894,7 +887,6 @@
             user-select: none;
         }
 
-        /* 纯透明 PNG 贴纸包裹壳，无灰色外框与卡片形阴影 */
         .note-sticker-placed {
             position: absolute;
             cursor: move;
@@ -965,7 +957,6 @@
             display: block;
         }
 
-        /* 全屏绝对定位防护与渐进模糊背景 */
         .image-preview-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -1011,7 +1002,6 @@
             opacity: 1;
         }
 
-        /* 手帐卡片样式（纯展示与拖拽） */
         .card-group {
             position: absolute;
             width: 330px;
@@ -1105,7 +1095,6 @@
         .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
         .btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 大文件夹子页面悬浮窗（带渐进模糊遮罩） */
         .folder-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(92, 75, 67, 0.4); 
@@ -1130,7 +1119,6 @@
         }
         .folder-modal-close:hover { background: #e2ab9d; color: #fff; }
 
-        /* 密码明文/密文小眼睛框样式 */
         .token-input-wrapper {
             position: relative;
             width: 100%;
@@ -1155,7 +1143,6 @@
             opacity: 1;
         }
 
-        /* 弹窗样式（带渐进模糊背景遮罩） */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(92, 75, 67, 0.45); 
@@ -1188,7 +1175,6 @@
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
 
-        /* 移动端 Media Query */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             .mobile-header { display: flex; }
@@ -1337,7 +1323,6 @@
 </head>
 <body>
 
-    <!-- 移动端顶部导航栏 -->
     <div class="mobile-header">
         <h2>✨ MarkFlow</h2>
         <div class="mobile-header-actions">
@@ -1348,13 +1333,11 @@
         </div>
     </div>
 
-    <!-- 左侧菜单栏 -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开菜单">❤️</button>
         </div>
         
-        <!-- 开源网站头像跳转卡片 -->
         <a href="https://github.com/guguli685-creator/Xl-markflow" class="sidebar-avatar-card" target="_blank" title="访问 Xl-markflow 开源仓库">
             <img src="https://q1.qlogo.cn/g?b=qq&nk=3478728818&s=640" alt="Xl-markflow Logo" class="sidebar-avatar-img" onerror="this.onerror=null;this.src='https://q2.qlogo.cn/headimg_dl?dst_uin=3478728818&spec=640';">
             <div class="sidebar-avatar-info">
@@ -1365,7 +1348,6 @@
 
         <div id="menuList"></div>
 
-        <!-- 底部导入、导出、手动备份及清空所有数据按钮区域 -->
         <div class="sidebar-bottom-actions">
             <button class="sidebar-action-btn sync-primary" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
                 💾 <span>手动备份到仓库</span>
@@ -1383,7 +1365,6 @@
         </div>
     </div>
 
-    <!-- 右侧主内容区 -->
     <div class="main-content">
         <div class="header" id="topHeader">
             <input type="text" class="search-box" placeholder="点击进入沉浸式书签与笔记综合检索..." id="searchInput" readonly onclick="openSearchFullscreen()">
@@ -1394,19 +1375,16 @@
             </div>
         </div>
         
-        <!-- 书签自由画布 -->
         <div class="content-canvas" id="canvasScrollWrapper" onclick="closeMobileSidebarOnClickOutside(event)">
             <div id="bookmarkContainer"></div>
         </div>
 
-        <!-- 极简纯图标缩放栏 -->
         <div class="zoom-control-bar" id="zoomControlBar">
             <button class="zoom-icon-btn" onclick="adjustZoom(0.1)" title="放大">+</button>
             <button class="zoom-icon-btn" onclick="adjustZoom(-0.1)" title="缩小" oncontextmenu="handleRightClickZoom(event)">-</button>
             <button class="zoom-icon-btn" onclick="resetZoom()" title="重置视角">🏠</button>
         </div>
 
-        <!-- 沉浸式独立综合搜索全屏页面 -->
         <div class="search-fullscreen-view" id="searchFullscreenView">
             <div class="search-fullscreen-header">
                 <button class="search-back-btn" onclick="closeSearchFullscreen()">← 返回</button>
@@ -1421,7 +1399,6 @@
                 <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除记录</button>
             </div>
 
-            <!-- 常用搜索标签管理与快捷跳转栏 -->
             <div class="frequent-search-bar">
                 <div class="frequent-title-label">📌 常用搜索：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
@@ -1439,7 +1416,6 @@
             </div>
         </div>
 
-        <!-- 沉浸式手帐笔记专用写作页面 -->
         <div class="content-canvas" id="notesContainer" style="display: none;" onclick="closeMobileSidebarOnClickOutside(event)">
             <div class="notes-page-immersive" id="notesPageBody" ondragover="allowDrop(event)" ondrop="handleDropSticker(event)" onclick="handlePageClick(event)">
                 
@@ -1462,7 +1438,6 @@
                     <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
                 </div>
 
-                <!-- 苹果风格底部悬浮 Dock 素材栏 -->
                 <div class="sticker-panel" id="stickerPanel">
                     <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '🌸')" onclick="addStickerToNote('🌸', 'text')">🌸</span>
                     <span class="sticker-item" draggable="true" ondragstart="dragSticker(event, '⭐')" onclick="addStickerToNote('⭐', 'text')">⭐</span>
@@ -1493,7 +1468,6 @@
         </div>
     </div>
 
-    <!-- 大文件夹嵌套快捷子页面悬浮窗 -->
     <div class="folder-modal-overlay" id="folderModalOverlay" onclick="closeFolderModal(event)">
         <div class="folder-modal">
             <div class="folder-modal-header">
@@ -1510,15 +1484,12 @@
         </div>
     </div>
 
-    <!-- 空格键大图预览模态框 -->
     <div class="image-preview-modal" id="imagePreviewModal" onclick="closeImagePreview()">
         <img id="previewModalImg" alt="大图预览">
     </div>
 
-    <!-- 优雅的轻提示 Toast -->
     <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 已同步</div>
 
-    <!-- GitHub 授权与仓库选择弹窗 -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
             <h3>☁️ 绑定您的 GitHub 私有仓库</h3>
@@ -1542,7 +1513,6 @@
         </div>
     </div>
 
-    <!-- 添加书签弹窗 -->
     <div class="modal-overlay" id="bookmarkModal">
         <div class="modal">
             <h3 id="bookmarkModalTitle">✨ 添加新书签</h3>
@@ -1563,7 +1533,6 @@
         </div>
     </div>
 
-    <!-- 编辑特定单条书签弹窗 -->
     <div class="modal-overlay" id="editBookmarkModal">
         <div class="modal">
             <h3>✏️ 编辑网址详情</h3>
@@ -1583,7 +1552,6 @@
         </div>
     </div>
 
-    <!-- 新建空白卡片分类弹窗 -->
     <div class="modal-overlay" id="cardModal">
         <div class="modal">
             <h3>📁 新建空白卡片分类</h3>
@@ -1595,7 +1563,6 @@
         </div>
     </div>
 
-    <!-- 编辑卡片分类名称弹窗 -->
     <div class="modal-overlay" id="editCardModal">
         <div class="modal">
             <h3>✏️ 编辑卡片分类名称</h3>
@@ -1607,7 +1574,6 @@
         </div>
     </div>
 
-    <!-- 新建笔记页面子文件夹弹窗 -->
     <div class="modal-overlay" id="noteSubModal">
         <div class="modal">
             <h3>📖 创建新笔记页面</h3>
@@ -1653,8 +1619,9 @@
         let editingCardOldName = '';
         let currentFolderModalGroup = '';
 
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchDataFromCloudRepo();
+        window.addEventListener('DOMContentLoaded', async () => {
+            // 修复核心：即使本地数据被清空，只要存在绑定的仓库凭证，就自动尝试从云端恢复所有数据
+            await fetchDataFromCloudRepo();
             fixMobileTouchClickIssues();
         });
 
@@ -1849,10 +1816,16 @@
             manualSyncBackup();
         }
 
+        /* 核心修复：自动恢复逻辑，支持从云端拉取并完全覆盖本地 */
         async function fetchDataFromCloudRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) return;
+            if (!token || !repo) {
+                // 如果没有绑定凭证，直接按本地现有缓存渲染
+                renderCustomStickers();
+                switchView(currentView, currentCategory, null);
+                return;
+            }
 
             const path = 'markflow-backup-data.json';
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
@@ -1872,12 +1845,13 @@
                     if (bundle.frequentSearchTags) frequentSearchTags = bundle.frequentSearchTags;
 
                     persistState();
-                    renderBookmarks(bookmarks);
-                    renderCustomStickers();
-                    updateSidebar();
+                    console.log("✨ 成功从云端仓库自动恢复所有书签与笔记！");
                 }
             } catch (err) {
-                console.error("云端加载恢复失败：", err);
+                console.error("自动恢复连接云端失败：", err);
+            } finally {
+                renderCustomStickers();
+                switchView(currentView, currentCategory, null);
             }
         }
 
@@ -3117,9 +3091,6 @@
                 renderFolderModalItems(currentFolderModalGroup);
             }
         }
-
-        renderCustomStickers();
-        switchView(currentView, currentCategory, null);
     </script>
 </body>
 </html>
