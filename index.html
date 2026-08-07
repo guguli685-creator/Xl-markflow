@@ -755,9 +755,9 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 笔记专属信件提交保存按钮样式 */
+        /* 笔记专属信件图标保存按钮（紧邻贴纸箱旁） */
         .note-save-letter-btn {
-            background: #f4d6cc;
+            background: #fffbf8;
             border: 1.5px solid #d48383;
             color: #a34848;
             padding: 6px 14px;
@@ -769,11 +769,10 @@
             white-space: nowrap;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
         }
         .note-save-letter-btn:hover {
-            background: #e2ab9d;
-            color: #fff;
+            background: #f4d6cc;
             transform: scale(1.05);
         }
 
@@ -1456,11 +1455,12 @@
                         <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="无序列表">• 列表</button>
                         <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="有序列表">1. 列表</button>
                     </div>
-                    <!-- 笔记专属信件图标保存按钮 -->
-                    <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">
-                        💌 <span>保存笔记.bj</span>
-                    </button>
-                    <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
+                    <div style="display:inline-flex; gap:6px; align-items:center;">
+                        <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">
+                            💌 保存.bj
+                        </button>
+                        <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
+                    </div>
                 </div>
 
                 <div class="sticker-panel" id="stickerPanel">
