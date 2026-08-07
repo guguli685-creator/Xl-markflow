@@ -1581,7 +1581,7 @@
     </div>
 
     <script>
-        // 彻底遗忘默认死数据：在全新环境/清空缓存时处于绝对零状态，完全由云端备份或用户初次录入决定
+        // 彻底遗忘默认死数据：若本地没有记录，则初始化为空，完全由云端双线备份（JSON/HTML）掌控
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
@@ -1799,7 +1799,6 @@
             manualSyncBackup();
         }
 
-        /* 绝对恢复命令：精准识别云端私有仓库中的 json 文件并彻底覆盖本地，实现换手机无缝恢复 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1822,12 +1821,10 @@
                 const jsonString = decodeURIComponent(escape(atob(fileData.content)));
                 const bundle = JSON.parse(jsonString);
 
-                // 彻底清空旧缓存，防止默认死数据干扰
                 localStorage.clear();
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_target_repo', repo);
 
-                // 将云端最新配置强行覆盖写入本地存储
                 if (bundle.categories) localStorage.setItem('markflow_categories', JSON.stringify(bundle.categories));
                 if (bundle.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(bundle.bookmarks));
                 if (bundle.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bundle.notesList));
@@ -1835,9 +1832,7 @@
                 if (bundle.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(bundle.customStickers));
                 if (bundle.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(bundle.frequentSearchTags));
 
-                alert('✨ 成功从云端恢复所有数据！即将为您强制刷新网页...');
-                
-                // 强制无缓存重载，确保完美呈现云端最新状态
+                alert('✨ 成功从私有仓库恢复所有数据！即将强制刷新网页...');
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
@@ -2711,6 +2706,12 @@
 
             const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
             const isMobile = window.innerWidth <= 768;
+
+            if (catsToRender.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 120px 20px; color:#b5a49c; font-size:15px; font-style:italic;">✨ 暂无书签分类，点击右上角 “+” 添加书签、新建卡片，或从左侧从仓库恢复网页。</div>`;
+                updateSidebar();
+                return;
+            }
             
             catsToRender.forEach((groupName, index) => {
                 const items = data.filter(b => b.group === groupName);
