@@ -1415,13 +1415,13 @@
                     <button class="search-tab-btn active" id="tabBookmarkBtn" onclick="switchSearchTab('bookmark')">🔖 书签</button>
                     <button class="search-tab-btn" id="tabNoteBtn" onclick="switchSearchTab('note')">📖 笔记</button>
                 </div>
-                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除记录</button>
+                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除历史</button>
             </div>
 
             <div class="frequent-search-bar">
-                <div class="frequent-title-label">📌 常用搜索：</div>
+                <div class="frequent-title-label">📌 自定义标签：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
-                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="将当前输入词添加为常用标签">+ 存为标签</button>
+                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库">+ 存为标签</button>
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
@@ -2026,21 +2026,13 @@
         function renderFrequentSearchTags() {
             const wrapper = document.getElementById('frequentTagsWrapper');
             if (!wrapper) return;
-            let displayList = [...frequentSearchTags];
-            // 实时将最近的搜索历史也合并展示或作为标签参考
-            searchHistoryList.forEach(item => {
-                if (!displayList.includes(item)) {
-                    displayList.unshift(item);
-                }
-            });
-            displayList = displayList.slice(0, 10); // 限制最多展示10个
-
-            if (displayList.length === 0) {
-                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无常用标签或历史记录，输入关键词后点击“存为标签”添加</span>`;
+            
+            if (frequentSearchTags.length === 0) {
+                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无自定义标签，输入关键词后点击“存为标签”添加</span>`;
                 return;
             }
             let html = '';
-            displayList.forEach(tag => {
+            frequentSearchTags.forEach(tag => {
                 html += `
                     <div class="frequent-tag-pill">
                         <span onclick="clickFrequentTag('${tag}')">${tag}</span>
@@ -2059,6 +2051,7 @@
             }
         }
 
+        /* 只有点击保存标签按钮时才生成标签，并直接去后台私有仓库更新 js (data.fow) */
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2075,14 +2068,18 @@
             persistState();
             renderFrequentSearchTags();
             showToast();
+            
+            // 明确点下了保存标签，立刻去后台私有仓库更新
+            manualSyncBackup();
         }
 
         function removeFrequentTag(tag, event) {
             event.stopPropagation();
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
-            searchHistoryList = searchHistoryList.filter(t => t !== tag);
             persistState();
             renderFrequentSearchTags();
+            // 删除标签后也同步一次仓库
+            manualSyncBackup();
         }
 
         function switchSearchTab(tabName) {
@@ -2109,20 +2106,18 @@
             document.getElementById('fullscreenSearchInput').value = '';
             searchHistoryList = [];
             persistState();
-            renderFrequentSearchTags();
             handleFullscreenSearch();
         }
 
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
             
-            // 记录搜索历史
+            // 纯粹记录检索历史，绝不自动转为标签
             if (keyword && keyword.length > 0) {
                 if (!searchHistoryList.includes(keyword)) {
                     searchHistoryList.unshift(keyword);
                     if (searchHistoryList.length > 15) searchHistoryList.pop();
                     persistState();
-                    renderFrequentSearchTags();
                 }
             }
 
