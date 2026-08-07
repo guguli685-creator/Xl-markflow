@@ -1500,7 +1500,7 @@
             <div id="repoSelectBox" style="display:none; flex-direction:column; gap:8px;">
                 <div class="category-selector-label">选择用于保存数据的专属仓库：</div>
                 <select id="userRepoSelect"></select>
-                <button class="modal-btn confirm" style="width: 100%;" onclick="confirmRepoBinding()">确认绑定并开始同步</button>
+                <button class="modal-btn confirm" style="width: 100%;" onclick="confirmRepoBinding()">确认绑定仓库</button>
             </div>
             <div class="modal-buttons" style="margin-top: 5px;">
                 <button class="modal-btn cancel" onclick="closeGithubAuthModal()">取消</button>
@@ -1581,7 +1581,6 @@
     </div>
 
     <script>
-        // 纯净零初始状态：无任何硬编码的内置死数据
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
@@ -1788,6 +1787,7 @@
             }
         }
 
+        /* 纯粹绑定仓库：绝对不自动触发备份，保护云端历史数据不被覆盖 */
         function confirmRepoBinding() {
             const repoFullName = document.getElementById('userRepoSelect').value;
             if(!repoFullName) { alert('请选择仓库'); return; }
@@ -1795,11 +1795,10 @@
             localStorage.setItem('gh_token', verifiedTokenTemp);
             localStorage.setItem('gh_target_repo', repoFullName);
             closeGithubAuthModal();
-            alert('🎉 绑定成功！');
-            manualSyncBackup();
+            alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
-        /* 从仓库恢复：只认准仓库里的 .json 文件，彻底消除 HTML 冲突和冗余残留 */
+        /* 从仓库恢复：只认准仓库里的 .json 文件，拉取并覆盖本地 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1815,7 +1814,7 @@
             try {
                 const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) {
-                    alert('未能在仓库中找到备份数据文件 (markflow-backup-data.json)，请先进行一次手动备份。');
+                    alert('未能在仓库中找到备份数据文件 (markflow-backup-data.json)，请确认仓库中是否有备份。');
                     return;
                 }
                 const fileData = await res.json();
@@ -1840,7 +1839,7 @@
             }
         }
 
-        /* 手动备份到仓库：只精准更新 markflow-backup-data.json 文件，彻底摆脱 html 冲突 */
+        /* 手动备份到仓库：仅在用户主动点击时更新 JSON */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1870,13 +1869,13 @@
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 更新 JSON 数据备份',
+                        message: '✨ MarkFlow 手动更新 JSON 数据备份',
                         content: jsonEncoded,
                         sha: jsonSha || undefined
                     })
                 });
 
-                alert('☁️ 手动备份成功！JSON 数据已成功更新至 GitHub 私有仓库。');
+                alert('☁️ 手动备份成功！所有数据已成功更新至 GitHub 私有仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
