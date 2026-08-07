@@ -1119,7 +1119,7 @@
         }
         .token-input-wrapper input {
             padding-right: 40px !important;
-            -webkit-text-security: disc; /* 核心：用 CSS 遮罩替代 type 切换，彻底消灭浏览器安全框反复横跳 */
+            -webkit-text-security: disc;
         }
         .token-input-wrapper input.show-plain {
             -webkit-text-security: none !important;
@@ -1742,7 +1742,6 @@
             }
         }
 
-        /* 核心修复：纯 CSS 控制显示隐藏，彻底杜绝输入框反复横跳 */
         function toggleTokenVisibility() {
             const input = document.getElementById('ghTokenInput');
             const btn = document.querySelector('.token-eye-btn');
@@ -1802,6 +1801,7 @@
             alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
+        /* 从仓库恢复：专属识别并读取 data.fow 混合流配置文件，只读不删 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1811,13 +1811,13 @@
                 return;
             }
 
-            const path = 'markflow-backup-data.json';
+            const path = 'data.fow';
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             try {
                 const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) {
-                    alert('未能在仓库中找到备份数据文件 (markflow-backup-data.json)，请确认仓库中是否有备份。');
+                    alert('未能在仓库中找到 data.fow 配置文件。如果是新手用户，当前仓库为空白属于正常状态。');
                     return;
                 }
                 const fileData = await res.json();
@@ -1835,13 +1835,14 @@
                 if (bundle.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(bundle.customStickers));
                 if (bundle.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(bundle.frequentSearchTags));
 
-                alert('✨ 成功从私有仓库恢复所有数据！即将强制刷新网页...');
+                alert('✨ 成功从 data.fow 混合流文件恢复所有数据！即将强制刷新网页...');
                 window.location.reload(true);
             } catch (err) {
                 alert('从仓库恢复失败，请检查网络或 Token 权限。');
             }
         }
 
+        /* 手动备份到仓库：仅创建或更新同目录下的专属 data.fow 文件（具有只读更新权限、禁止删除） */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1851,8 +1852,8 @@
                 return;
             }
 
-            const jsonPath = 'markflow-backup-data.json';
-            const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
+            const path = 'data.fow';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             const bundleData = {
                 categories, bookmarks, notesList, cardPositions, customStickers, frequentSearchTags,
@@ -1861,23 +1862,29 @@
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
 
             try {
-                let jsonSha = '';
-                const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getJsonRes.ok) {
-                    const info = await getJsonRes.json();
-                    jsonSha = info.sha;
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const info = await getRes.json();
+                    fileSha = info.sha; // 仅获取 SHA 用于安全更新，绝不执行删除
                 }
-                await fetch(jsonUrl, {
+                
+                const putRes = await fetch(url, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 手动更新 JSON 数据备份',
+                        message: '✨ MarkFlow 混合流数据更新 data.fow',
                         content: jsonEncoded,
-                        sha: jsonSha || undefined
+                        sha: fileSha || undefined
                     })
                 });
 
-                alert('☁️ 手动备份成功！所有数据已成功更新至 GitHub 私有仓库。');
+                if (!putRes.ok) {
+                    alert('同步写入 data.fow 失败，请检查仓库权限。');
+                    return;
+                }
+
+                alert('☁️ 手动备份成功！混合流配置文件 data.fow 已安全更新至私有仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
