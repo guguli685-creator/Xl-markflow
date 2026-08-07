@@ -468,9 +468,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             border-bottom: 2px dashed #f2dfd6;
-            padding-bottom: 14px;
+            padding-bottom: 12px;
             gap: 10px;
         }
         .search-tabs-group {
@@ -516,6 +516,81 @@
             border-color: #a34848;
         }
 
+        /* 常用搜索标签区域样式 */
+        .frequent-search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px 14px;
+            border-radius: 16px;
+            border: 1.5px solid #ecd5cc;
+        }
+        .frequent-title-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #b56565;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .frequent-tags-wrapper {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1;
+            align-items: center;
+        }
+        .frequent-tag-pill {
+            background: #fffbf8;
+            border: 1px solid #ecd5cc;
+            color: #8c7368;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .frequent-tag-pill:hover {
+            background: #faede6;
+            color: #b56565;
+            border-color: #d48383;
+        }
+        .frequent-tag-delete {
+            font-size: 11px;
+            color: #c49a9a;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 0 2px;
+        }
+        .frequent-tag-delete:hover {
+            color: #a34848;
+            background: #f4d6cc;
+        }
+        .add-frequent-tag-btn {
+            background: #f4d6cc;
+            border: 1px dashed #d48383;
+            color: #a34848;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .add-frequent-tag-btn:hover {
+            background: #e2ab9d;
+            color: #fff;
+        }
+
         .search-section-panel {
             display: none;
             flex-direction: column;
@@ -539,7 +614,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            max-height: 600px;
+            max-height: 520px;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -663,7 +738,7 @@
 
         .sticker-toggle-btn {
             background: #f4d6cc;
-            border: 1px solid #d48383;
+            border: 1.5px solid #d48383;
             color: #a34848;
             padding: 6px 14px;
             border-radius: 10px;
@@ -1316,6 +1391,15 @@
                 <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除记录</button>
             </div>
 
+            <!-- 常用搜索标签管理与快捷跳转栏 -->
+            <div class="frequent-search-bar">
+                <div class="frequent-title-label">📌 常用搜索：</div>
+                <div class="frequent-tags-wrapper" id="frequentTagsWrapper">
+                    <!-- 动态渲染常用搜索标签 -->
+                </div>
+                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="将当前输入词添加为常用标签">+ 存为标签</button>
+            </div>
+
             <div class="search-section-panel active" id="panelBookmark">
                 <div class="section-title">📌 检索结果（点击直接访问）</div>
                 <div class="search-results-list" id="searchResultsList"></div>
@@ -1536,6 +1620,9 @@
             "系统": { x: 120, y: 400, rotate: 1.5 }
         };
 
+        /* 常用搜索标签初始化存储（默认加入几个实用标签） */
+        let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["vpn", "github", "开发", "工具"];
+
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
         let selectedGroup = '';
@@ -1565,6 +1652,7 @@
             localStorage.setItem('markflow_currentCategory', currentCategory);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
+            localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
 
             syncDataToCloudRepo();
         }
@@ -1583,7 +1671,7 @@
             }
         }
 
-        /* 升级：在导出 HTML 书签时加入 NOTE 备注属性，确保下次导入不丢失备注 */
+        /* 升级：在导出 HTML 书签时加入 NOTE 备注属性，确保下次导入不丢失备注[span_0](start_span)[span_0](end_span) */
         function generateBookmarksHtmlString() {
             let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
             const cats = getAllCategories();
@@ -1614,7 +1702,7 @@
             showToast();
         }
 
-        /* 升级：解析导入的 HTML 时同步读取 NOTE 备注属性 */
+        /* 升级：解析导入的 HTML 时同步读取 NOTE 备注属性[span_1](start_span)[span_1](end_span) */
         function handleImportBookmarks(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1678,6 +1766,7 @@
                 currentCategory = 'all';
                 customStickers = [];
                 cardPositions = {};
+                frequentSearchTags = ["vpn", "github", "开发", "工具"];
                 
                 persistState();
                 switchView('bookmarks', 'all');
@@ -1766,6 +1855,7 @@
                     if (bundle.notesList) notesList = bundle.notesList;
                     if (bundle.cardPositions) cardPositions = bundle.cardPositions;
                     if (bundle.customStickers) customStickers = bundle.customStickers;
+                    if (bundle.frequentSearchTags) frequentSearchTags = bundle.frequentSearchTags;
 
                     persistState();
                     renderBookmarks(bookmarks);
@@ -1786,7 +1876,7 @@
             const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
 
             const bundleData = {
-                categories, bookmarks, notesList, cardPositions, customStickers,
+                categories, bookmarks, notesList, cardPositions, customStickers, frequentSearchTags,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -1874,6 +1964,7 @@
         function openSearchFullscreen() {
             const view = document.getElementById('searchFullscreenView');
             view.style.display = 'flex';
+            renderFrequentSearchTags();
             renderFullscreenResults('');
             renderNotesSearchResults('');
             document.getElementById('fullscreenSearchInput').focus();
@@ -1882,6 +1973,62 @@
         function closeSearchFullscreen() {
             document.getElementById('searchFullscreenView').style.display = 'none';
             document.getElementById('searchInput').value = '';
+        }
+
+        /* 渲染常用搜索标签 */
+        function renderFrequentSearchTags() {
+            const wrapper = document.getElementById('frequentTagsWrapper');
+            if (!wrapper) return;
+            if (frequentSearchTags.length === 0) {
+                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无常用标签，输入关键词后点击“存为标签”添加</span>`;
+                return;
+            }
+            let html = '';
+            frequentSearchTags.forEach(tag => {
+                html += `
+                    <div class="frequent-tag-pill">
+                        <span onclick="clickFrequentTag('${tag}')">${tag}</span>
+                        <span class="frequent-tag-delete" onclick="removeFrequentTag('${tag}', event)" title="删除标签">×</span>
+                    </div>
+                `;
+            });
+            wrapper.innerHTML = html;
+        }
+
+        /* 点击常用标签直接填入并触发快速跳转检索 */
+        function clickFrequentTag(tag) {
+            const input = document.getElementById('fullscreenSearchInput');
+            if (input) {
+                input.value = tag;
+                handleFullscreenSearch();
+            }
+        }
+
+        /* 添加当前输入词为常用搜索标签 */
+        function addCurrentAsFrequentTag() {
+            const input = document.getElementById('fullscreenSearchInput');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) {
+                alert('请先在上方输入框键入您想保存的搜索关键词哦~');
+                return;
+            }
+            if (frequentSearchTags.includes(val)) {
+                alert('该标签已经存在啦！');
+                return;
+            }
+            frequentSearchTags.push(val);
+            persistState();
+            renderFrequentSearchTags();
+            showToast();
+        }
+
+        /* 删除常用标签 */
+        function removeFrequentTag(tag, event) {
+            event.stopPropagation();
+            frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
+            persistState();
+            renderFrequentSearchTags();
         }
 
         function switchSearchTab(tabName) {
