@@ -755,7 +755,6 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 纯图标信件保存按钮（紧邻贴纸箱，并排不换行） */
         .note-save-letter-btn {
             background: #fffbf8;
             border: 1.5px solid #d48383;
@@ -1455,7 +1454,6 @@
                         <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="无序列表">• 列表</button>
                         <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="有序列表">1. 列表</button>
                     </div>
-                    <!-- 专属并排纯图标信件按钮与贴纸 Dock -->
                     <div style="display:inline-flex; gap:6px; align-items:center; flex-shrink:0;">
                         <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">💌</button>
                         <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
@@ -1624,6 +1622,7 @@
         let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
 
         let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["github", "开发", "工具"];
+        let searchHistoryList = JSON.parse(localStorage.getItem('markflow_searchHistoryList')) || [];
 
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
@@ -1650,6 +1649,7 @@
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
             localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
+            localStorage.setItem('markflow_searchHistoryList', JSON.stringify(searchHistoryList));
         }
 
         function toggleMobileSidebar() {
@@ -1760,6 +1760,7 @@
                 customStickers = [];
                 cardPositions = {};
                 frequentSearchTags = ["github", "开发", "工具"];
+                searchHistoryList = [];
                 
                 persistState();
                 switchView('bookmarks', 'all');
@@ -1826,7 +1827,6 @@
             alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
-        /* 从仓库恢复：双文件独立加载 (data.fow + notes.bj) */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1839,7 +1839,6 @@
             try {
                 let restoredAny = false;
 
-                // 1. 读取书签与卡片混合流文件 data.fow
                 const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (fowRes.ok) {
                     const fowData = await fowRes.json();
@@ -1849,10 +1848,10 @@
                     if (fowJson.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(fowJson.cardPositions));
                     if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
                     if (fowJson.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(fowJson.frequentSearchTags));
+                    if (fowJson.searchHistoryList) localStorage.setItem('markflow_searchHistoryList', JSON.stringify(fowJson.searchHistoryList));
                     restoredAny = true;
                 }
 
-                // 2. 读取独立手帐笔记板块文件 notes.bj
                 const bjRes = await fetch(`https://api.github.com/repos/${repo}/contents/notes.bj`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (bjRes.ok) {
                     const bjData = await bjRes.json();
@@ -1876,7 +1875,6 @@
             }
         }
 
-        /* 菜单栏主备份按钮：仅更新 data.fow（书签流） */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1890,7 +1888,7 @@
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             const bundleData = {
-                categories, bookmarks, cardPositions, customStickers, frequentSearchTags,
+                categories, bookmarks, cardPositions, customStickers, frequentSearchTags, searchHistoryList,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -1925,7 +1923,6 @@
             }
         }
 
-        /* 笔记专属信件图标按钮：点击后专门负责更新 notes.bj 笔记文件 */
         async function manualSyncNotesBj() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1935,7 +1932,7 @@
                 return;
             }
 
-            autoSaveState(); // 确保当前正在写的笔记已存入内存
+            autoSaveState();
 
             const path = 'notes.bj';
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
@@ -2029,12 +2026,21 @@
         function renderFrequentSearchTags() {
             const wrapper = document.getElementById('frequentTagsWrapper');
             if (!wrapper) return;
-            if (frequentSearchTags.length === 0) {
-                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无常用标签，输入关键词后点击“存为标签”添加</span>`;
+            let displayList = [...frequentSearchTags];
+            // 实时将最近的搜索历史也合并展示或作为标签参考
+            searchHistoryList.forEach(item => {
+                if (!displayList.includes(item)) {
+                    displayList.unshift(item);
+                }
+            });
+            displayList = displayList.slice(0, 10); // 限制最多展示10个
+
+            if (displayList.length === 0) {
+                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无常用标签或历史记录，输入关键词后点击“存为标签”添加</span>`;
                 return;
             }
             let html = '';
-            frequentSearchTags.forEach(tag => {
+            displayList.forEach(tag => {
                 html += `
                     <div class="frequent-tag-pill">
                         <span onclick="clickFrequentTag('${tag}')">${tag}</span>
@@ -2074,6 +2080,7 @@
         function removeFrequentTag(tag, event) {
             event.stopPropagation();
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
+            searchHistoryList = searchHistoryList.filter(t => t !== tag);
             persistState();
             renderFrequentSearchTags();
         }
@@ -2100,11 +2107,25 @@
 
         function clearSearchHistoryInput() {
             document.getElementById('fullscreenSearchInput').value = '';
+            searchHistoryList = [];
+            persistState();
+            renderFrequentSearchTags();
             handleFullscreenSearch();
         }
 
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
+            
+            // 记录搜索历史
+            if (keyword && keyword.length > 0) {
+                if (!searchHistoryList.includes(keyword)) {
+                    searchHistoryList.unshift(keyword);
+                    if (searchHistoryList.length > 15) searchHistoryList.pop();
+                    persistState();
+                    renderFrequentSearchTags();
+                }
+            }
+
             renderFullscreenResults(keyword);
             renderNotesSearchResults(keyword);
         }
