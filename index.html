@@ -1415,13 +1415,13 @@
                     <button class="search-tab-btn active" id="tabBookmarkBtn" onclick="switchSearchTab('bookmark')">🔖 书签</button>
                     <button class="search-tab-btn" id="tabNoteBtn" onclick="switchSearchTab('note')">📖 笔记</button>
                 </div>
-                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清除历史</button>
+                <button class="clear-history-btn" onclick="clearSearchHistoryInput()">🧹 清空输入</button>
             </div>
 
             <div class="frequent-search-bar">
-                <div class="frequent-title-label">📌 自定义标签：</div>
+                <div class="frequent-title-label">📌 JS 固化标签：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
-                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库">+ 存为标签</button>
+                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="点击后存为标签，并直接更新 JS/HTML 到私有仓库">+ 存为标签</button>
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
@@ -1608,6 +1608,9 @@
     </div>
 
     <script>
+        // JS 常驻固化标签（直接作为代码逻辑内置）
+        let frequentSearchTags = ["github", "开发", "工具"];
+
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
         let notesList = JSON.parse(localStorage.getItem('markflow_notesList')) || [
@@ -1620,9 +1623,6 @@
 
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
         let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
-
-        let frequentSearchTags = JSON.parse(localStorage.getItem('markflow_frequentSearchTags')) || ["github", "开发", "工具"];
-        let searchHistoryList = JSON.parse(localStorage.getItem('markflow_searchHistoryList')) || [];
 
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
@@ -1648,8 +1648,6 @@
             localStorage.setItem('markflow_currentCategory', currentCategory);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
-            localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
-            localStorage.setItem('markflow_searchHistoryList', JSON.stringify(searchHistoryList));
         }
 
         function toggleMobileSidebar() {
@@ -1759,8 +1757,6 @@
                 currentCategory = 'all';
                 customStickers = [];
                 cardPositions = {};
-                frequentSearchTags = ["github", "开发", "工具"];
-                searchHistoryList = [];
                 
                 persistState();
                 switchView('bookmarks', 'all');
@@ -1847,8 +1843,6 @@
                     if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
                     if (fowJson.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(fowJson.cardPositions));
                     if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
-                    if (fowJson.frequentSearchTags) localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(fowJson.frequentSearchTags));
-                    if (fowJson.searchHistoryList) localStorage.setItem('markflow_searchHistoryList', JSON.stringify(fowJson.searchHistoryList));
                     restoredAny = true;
                 }
 
@@ -1888,7 +1882,7 @@
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             const bundleData = {
-                categories, bookmarks, cardPositions, customStickers, frequentSearchTags, searchHistoryList,
+                categories, bookmarks, cardPositions, customStickers,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -1920,6 +1914,61 @@
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
+            }
+        }
+
+        // 核心更新主程序文件（通过 GitHub API 更新当前托管网页对应的 JS/HTML 文件本身）
+        async function updateJsFileInRepo(newTagsArray) {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) {
+                // 如果未绑定过私有仓库，则直接本地生效并提示
+                return;
+            }
+
+            // 自动寻找当前网页在仓库中的主力文件（通常为 index.html 或 main.js）
+            // 此处直接提交更新当前整个页面的 HTML/JS 源码，并在其中把新标签数组动态织入
+            const filePath = 'index.html'; 
+            const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+
+            try {
+                // 1. 获取当前远端文件的 SHA
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    const info = await getRes.json();
+                    fileSha = info.sha;
+                }
+
+                // 2. 动态抓取当前页面的完整 HTML 源码并把标签数组进行精准替换
+                let currentHtmlContent = document.documentElement.outerHTML;
+                
+                // 正则替换源码里的 let frequentSearchTags = [...]
+                const targetPattern = /let frequentSearchTags\s*=\s*\[.*?\];/s;
+                const replacementStr = `let frequentSearchTags = ${JSON.stringify(newTagsArray)};`;
+                
+                if (targetPattern.test(currentHtmlContent)) {
+                    currentHtmlContent = currentHtmlContent.replace(targetPattern, replacementStr);
+                }
+
+                const encodedContent = btoa(unescape(encodeURIComponent(currentHtmlContent)));
+
+                // 3. 提交更新到私有仓库
+                const putRes = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `🏷️ 自动更新 JS 中的自定义标签数组: ${newTagsArray.join(', ')}`,
+                        content: encodedContent,
+                        sha: fileSha || undefined
+                    })
+                });
+
+                if (putRes.ok) {
+                    showToast();
+                }
+            } catch (err) {
+                console.error("更新 JS 文件至私有仓库失败", err);
             }
         }
 
@@ -2028,7 +2077,7 @@
             if (!wrapper) return;
             
             if (frequentSearchTags.length === 0) {
-                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无自定义标签，输入关键词后点击“存为标签”添加</span>`;
+                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无标签，输入关键词后点击“存为标签”添加</span>`;
                 return;
             }
             let html = '';
@@ -2051,7 +2100,7 @@
             }
         }
 
-        /* 只有点击保存标签按钮时才生成标签，并直接去后台私有仓库更新 js (data.fow) */
+        /* 只有点击“存为标签”这一刻：才写入 JS 标签数组，并直接去后台私有仓库更新代码 */
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2065,21 +2114,20 @@
                 return;
             }
             frequentSearchTags.push(val);
-            persistState();
             renderFrequentSearchTags();
             showToast();
             
-            // 明确点下了保存标签，立刻去后台私有仓库更新
-            manualSyncBackup();
+            // 触发后台私有仓库更新 JS 文件
+            updateJsFileInRepo(frequentSearchTags);
         }
 
         function removeFrequentTag(tag, event) {
             event.stopPropagation();
             frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
-            persistState();
             renderFrequentSearchTags();
-            // 删除标签后也同步一次仓库
-            manualSyncBackup();
+            
+            // 移除标签后同样实时更新私有仓库中的 JS 文件
+            updateJsFileInRepo(frequentSearchTags);
         }
 
         function switchSearchTab(tabName) {
@@ -2104,23 +2152,11 @@
 
         function clearSearchHistoryInput() {
             document.getElementById('fullscreenSearchInput').value = '';
-            searchHistoryList = [];
-            persistState();
             handleFullscreenSearch();
         }
 
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
-            
-            // 纯粹记录检索历史，绝不自动转为标签
-            if (keyword && keyword.length > 0) {
-                if (!searchHistoryList.includes(keyword)) {
-                    searchHistoryList.unshift(keyword);
-                    if (searchHistoryList.length > 15) searchHistoryList.pop();
-                    persistState();
-                }
-            }
-
             renderFullscreenResults(keyword);
             renderNotesSearchResults(keyword);
         }
