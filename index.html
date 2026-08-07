@@ -45,13 +45,14 @@
             background-size: 28px 28px;
         }
 
-        /* 移动端顶部导航栏 */
+        /* 移动端顶部导航栏（渐进式模糊） */
         .mobile-header {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 56px;
-            background: rgba(255, 248, 243, 0.95);
-            backdrop-filter: blur(4px);
+            background: linear-gradient(to bottom, rgba(255, 248, 243, 0.95), rgba(255, 248, 243, 0.75));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-bottom: 2px dashed #f2dfd6;
             z-index: 120;
             padding: 0 12px;
@@ -89,11 +90,12 @@
         
         .header-action-btn:hover, .mobile-menu-toggle:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
 
-        /* 左侧菜单栏（桌面端） */
+        /* 左侧菜单栏（桌面端，渐进式模糊） */
         .sidebar {
             width: 260px;
-            background: rgba(255, 248, 243, 0.95);
-            backdrop-filter: blur(4px);
+            background: linear-gradient(135deg, rgba(255, 248, 243, 0.95), rgba(253, 245, 238, 0.85));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: flex;
             flex-direction: column;
             padding: 24px 16px;
@@ -385,13 +387,15 @@
             position: relative;
             width: 100%;
         }
+        /* 顶部标题栏（渐进式模糊） */
         .header {
             padding: 20px 36px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(253, 251, 247, 0.6);
-            backdrop-filter: blur(4px);
+            background: linear-gradient(to bottom, rgba(253, 251, 247, 0.85), rgba(253, 251, 247, 0.5));
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             position: relative;
             z-index: 50;
             gap: 16px;
@@ -430,11 +434,13 @@
             flex-shrink: 0;
         }
 
-        /* 沉浸式独立综合搜索全屏页面 */
+        /* 沉浸式独立综合搜索全屏页面（渐进式模糊过渡底色） */
         .search-fullscreen-view {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: #fdfbf7;
+            background: rgba(253, 251, 247, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             z-index: 150;
             display: none;
             flex-direction: column;
@@ -651,13 +657,14 @@
         .search-result-url { font-size: 12px; color: #b5a49c; word-break: break-all; line-height: 1.4; }
         .search-result-badge { font-size: 12px; background: #faede6; color: #d48383; padding: 4px 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 
-        /* 极简纯图标缩放栏 */
+        /* 极简纯图标缩放栏（渐进式模糊） */
         .zoom-control-bar {
             position: absolute;
             bottom: 30px;
             right: 30px;
-            background: rgba(255, 248, 243, 0.95);
-            backdrop-filter: blur(4px);
+            background: rgba(255, 248, 243, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 2px solid #ecd5cc;
             padding: 6px 12px;
             border-radius: 20px;
@@ -710,12 +717,14 @@
             position: relative;
         }
         
-        /* 优雅横排工具栏 */
+        /* 优雅横排工具栏（渐进式模糊） */
         .notes-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             padding: 10px 16px;
             border-radius: 14px;
             border: 1.5px solid #ecd5cc;
@@ -760,11 +769,12 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 苹果风格底部悬浮 Dock 素材栏 */
+        /* 苹果风格底部悬浮 Dock 素材栏（深度渐进式模糊） */
         .sticker-panel {
             display: none;
-            background: rgba(255, 248, 243, 0.95);
-            backdrop-filter: blur(12px);
+            background: rgba(255, 248, 243, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1.5px solid #ecd5cc;
             padding: 8px 16px;
             border-radius: 24px;
@@ -955,12 +965,13 @@
             display: block;
         }
 
-        /* 全屏绝对定位防护 */
+        /* 全屏绝对定位防护与渐进模糊背景 */
         .image-preview-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(92, 75, 67, 0.7);
-            backdrop-filter: blur(5px);
+            background: rgba(92, 75, 67, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: none;
             justify-content: center;
             align-items: center;
@@ -1004,7 +1015,9 @@
         .card-group {
             position: absolute;
             width: 330px;
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             border: 2px solid #f2dfd6;
             border-radius: 16px;
             padding: 22px 20px 20px 20px;
@@ -1092,10 +1105,12 @@
         .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
         .btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 大文件夹子页面悬浮窗样式 */
+        /* 大文件夹子页面悬浮窗（带渐进模糊遮罩） */
         .folder-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(92, 75, 67, 0.35); backdrop-filter: blur(4px);
+            background: rgba(92, 75, 67, 0.4); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             display: none; justify-content: center; align-items: center; z-index: 250;
         }
         .folder-modal {
@@ -1140,10 +1155,12 @@
             opacity: 1;
         }
 
-        /* 弹窗样式 */
+        /* 弹窗样式（带渐进模糊背景遮罩） */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(92, 75, 67, 0.4); backdrop-filter: blur(2px);
+            background: rgba(92, 75, 67, 0.45); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             display: none; justify-content: center; align-items: center; 
             z-index: 300;
         }
@@ -1197,7 +1214,7 @@
                 flex-direction: row;
                 justify-content: space-between;
                 gap: 8px;
-                background: rgba(253, 251, 247, 0.95);
+                background: linear-gradient(to bottom, rgba(253, 251, 247, 0.95), rgba(253, 251, 247, 0.8));
             }
             .search-box {
                 flex: 1;
@@ -1832,7 +1849,6 @@
             manualSyncBackup();
         }
 
-        /* 自动恢复：加载网页时拉取云端 */
         async function fetchDataFromCloudRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1865,7 +1881,6 @@
             }
         }
 
-        /* 手动点击备份绝对命令：直接覆盖最新数据到仓库[span_2](start_span)[span_2](end_span) */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
