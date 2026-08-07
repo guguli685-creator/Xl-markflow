@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MarkFlow - 沉浸手帐空间</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
@@ -1770,7 +1771,7 @@
             const btn = document.querySelector('.token-eye-btn');
             if (input.type === 'password') {
                 input.type = 'text';
-                btn.innerText = '🙈';
+                btn.innerText = '🐵';
             } else {
                 input.type = 'password';
                 btn.innerText = '👁️';
@@ -2713,7 +2714,6 @@
             listContainer.innerHTML = html;
         }
 
-        /* 修复桌面端换设备或云端同步后卡片坐标丢失导致重叠混乱的 Bug */
         function renderBookmarks(data) {
             const container = document.getElementById('bookmarkContainer');
             container.innerHTML = '';
@@ -2724,7 +2724,6 @@
             catsToRender.forEach((groupName, index) => {
                 const items = data.filter(b => b.group === groupName);
                 
-                // 确保每个卡片在初始化或无坐标记录时拥有标准规范的默认网格布局坐标
                 if (!cardPositions[groupName] || typeof cardPositions[groupName].x !== 'number' || typeof cardPositions[groupName].y !== 'number') {
                     cardPositions[groupName] = {
                         x: 60 + (index % 4) * 370,
