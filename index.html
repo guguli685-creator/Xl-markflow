@@ -1342,10 +1342,10 @@
 
         <div class="sidebar-bottom-actions">
             <button class="sidebar-action-btn sync-primary" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
-                💾 <span>手动备份到仓库</span>
+                💾 <span>手动备份到仓库</span>[span_2](start_span)[span_2](end_span)
             </button>
             <button class="sidebar-action-btn" onclick="manualRestoreFromRepo()" title="从仓库恢复所有书签和笔记">
-                ☁️ <span>从仓库恢复网页</span>
+                ☁️ <span>从仓库恢复网页</span>[span_3](start_span)[span_3](end_span)
             </button>
             <input type="file" id="importFile" accept=".html,.htm" style="display:none" onchange="handleImportBookmarks(event)">
             <button class="sidebar-action-btn" onclick="document.getElementById('importFile').click()" title="导入 HTML 书签">
@@ -1483,7 +1483,7 @@
         <img id="previewModalImg" alt="大图预览">
     </div>
 
-    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 已同步</div>
+    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 本地修改已暂存</div>
 
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
@@ -1619,6 +1619,7 @@
             switchView(currentView, currentCategory, null);
         });
 
+        /* 纯本地存储：绝对不进行任何后台静默自动上传，保护云端备份不被误删污染 */
         function persistState() {
             localStorage.setItem('markflow_categories', JSON.stringify(categories));
             localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
@@ -1629,69 +1630,6 @@
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
             localStorage.setItem('markflow_frequentSearchTags', JSON.stringify(frequentSearchTags));
-
-            // 用户添加网页或修改数据时，在后台静默自动备份，不弹窗打扰用户
-            silentSyncToCloudRepo();
-        }
-
-        /* 后台静默自动备份函数（无感增量更新） */
-        async function silentSyncToCloudRepo() {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) return; // 未绑定仓库则跳过静默备份
-
-            const jsonPath = 'markflow-backup-data.json';
-            const jsonUrl = `https://api.github.com/repos/${repo}/contents/${jsonPath}`;
-
-            const bundleData = {
-                categories, bookmarks, notesList, cardPositions, customStickers, frequentSearchTags,
-                updatedAt: new Date().toISOString()
-            };
-            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
-
-            const htmlPath = 'bookmarks-backup.html';
-            const htmlUrl = `https://api.github.com/repos/${repo}/contents/${htmlPath}`;
-            const htmlString = generateBookmarksHtmlString();
-            const htmlEncoded = btoa(unescape(encodeURIComponent(htmlString)));
-
-            try {
-                let jsonSha = '';
-                const getJsonRes = await fetch(jsonUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getJsonRes.ok) {
-                    const info = await getJsonRes.json();
-                    jsonSha = info.sha;
-                }
-                await fetch(jsonUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '✨ MarkFlow 后台静默增量自动备份',
-                        content: jsonEncoded,
-                        sha: jsonSha || undefined
-                    })
-                });
-
-                let htmlSha = '';
-                const getHtmlRes = await fetch(htmlUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getHtmlRes.ok) {
-                    const info = await getHtmlRes.json();
-                    htmlSha = info.sha;
-                }
-                await fetch(htmlUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '✨ MarkFlow 后台静默增量备份 HTML 书签',
-                        content: htmlEncoded,
-                        sha: htmlSha || undefined
-                    })
-                });
-
-                // 增量备份完更新，弹轻提示窗即可（Toast）
-                showToast();
-            } catch(err) {
-                console.error("后台静默备份失败：", err);
-            }
         }
 
         function toggleMobileSidebar() {
@@ -1869,6 +1807,7 @@
             manualSyncBackup();
         }
 
+        /* 绝对命令：只有点击“从仓库恢复网页”按钮时才会从云端拉取覆盖[span_4](start_span)[span_4](end_span) */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1910,6 +1849,7 @@
             }
         }
 
+        /* 绝对命令：只有点击“手动备份到仓库”按钮时才是真正的更新[span_5](start_span)[span_5](end_span) */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1966,7 +1906,7 @@
                     })
                 });
 
-                alert('☁️ 手动备份成功！所有数据已覆盖保存至 GitHub 仓库。');
+                alert('☁️ 手动备份成功！所有数据已绝对覆盖保存至 GitHub 仓库。');
                 showToast();
             } catch(err) {
                 alert('备份失败，请检查网络或 Token 权限。');
