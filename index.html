@@ -755,25 +755,25 @@
         }
         .sticker-toggle-btn:hover { background: #e2ab9d; color: #fff; }
 
-        /* 笔记专属信件图标保存按钮（紧邻贴纸箱旁） */
+        /* 纯图标信件保存按钮（紧邻贴纸箱，并排不换行） */
         .note-save-letter-btn {
             background: #fffbf8;
             border: 1.5px solid #d48383;
             color: #a34848;
-            padding: 6px 14px;
+            width: 32px;
+            height: 32px;
             border-radius: 10px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 16px;
             cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
         }
         .note-save-letter-btn:hover {
             background: #f4d6cc;
-            transform: scale(1.05);
+            transform: scale(1.1);
         }
 
         .sticker-panel {
@@ -1455,10 +1455,9 @@
                         <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="无序列表">• 列表</button>
                         <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="有序列表">1. 列表</button>
                     </div>
-                    <div style="display:inline-flex; gap:6px; align-items:center;">
-                        <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">
-                            💌 保存.bj
-                        </button>
+                    <!-- 专属并排纯图标信件按钮与贴纸 Dock -->
+                    <div style="display:inline-flex; gap:6px; align-items:center; flex-shrink:0;">
+                        <button class="note-save-letter-btn" onclick="manualSyncNotesBj()" title="我更新了，请保存 notes.bj 专属笔记文件">💌</button>
                         <button class="sticker-toggle-btn" onclick="toggleStickerPanel()">🎨 贴纸 Dock</button>
                     </div>
                 </div>
@@ -1926,7 +1925,7 @@
             }
         }
 
-        /* 笔记专属信件按钮：点击后专门负责更新 notes.bj 笔记文件 */
+        /* 笔记专属信件图标按钮：点击后专门负责更新 notes.bj 笔记文件 */
         async function manualSyncNotesBj() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1970,7 +1969,7 @@
                     return;
                 }
 
-                alert('💌 笔记保存成功！notes.bj 已成功更新至私有仓库。');
+                alert('💌 笔记已成功保存至 notes.bj！');
                 showToast();
             } catch (err) {
                 alert('笔记保存失败，请检查网络或 Token 权限。');
