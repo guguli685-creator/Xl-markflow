@@ -1119,6 +1119,10 @@
         }
         .token-input-wrapper input {
             padding-right: 40px !important;
+            -webkit-text-security: disc; /* 核心：用 CSS 遮罩替代 type 切换，彻底消灭浏览器安全框反复横跳 */
+        }
+        .token-input-wrapper input.show-plain {
+            -webkit-text-security: none !important;
         }
         .token-eye-btn {
             position: absolute;
@@ -1491,7 +1495,7 @@
             <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入您的 Personal Access Token (需 repo 权限)，系统将自动加载您的私有/公开仓库供您选择。</p>
             
             <div class="token-input-wrapper">
-                <input type="password" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off">
+                <input type="text" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
                 <button type="button" class="token-eye-btn" onclick="toggleTokenVisibility()" title="显示/隐藏 Token">👁️</button>
             </div>
 
@@ -1738,15 +1742,16 @@
             }
         }
 
+        /* 核心修复：纯 CSS 控制显示隐藏，彻底杜绝输入框反复横跳 */
         function toggleTokenVisibility() {
             const input = document.getElementById('ghTokenInput');
             const btn = document.querySelector('.token-eye-btn');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.innerText = '🐵';
-            } else {
-                input.type = 'password';
+            if (input.classList.contains('show-plain')) {
+                input.classList.remove('show-plain');
                 btn.innerText = '👁️';
+            } else {
+                input.classList.add('show-plain');
+                btn.innerText = '🐵';
             }
         }
 
@@ -1787,7 +1792,6 @@
             }
         }
 
-        /* 纯粹绑定仓库：绝对不自动触发备份，保护云端历史数据不被覆盖 */
         function confirmRepoBinding() {
             const repoFullName = document.getElementById('userRepoSelect').value;
             if(!repoFullName) { alert('请选择仓库'); return; }
@@ -1798,7 +1802,6 @@
             alert('🎉 仓库绑定成功！现在您可以点击“从仓库恢复网页”来加载云端数据。');
         }
 
-        /* 从仓库恢复：只认准仓库里的 .json 文件，拉取并覆盖本地 */
         async function manualRestoreFromRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1839,7 +1842,6 @@
             }
         }
 
-        /* 手动备份到仓库：仅在用户主动点击时更新 JSON */
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
