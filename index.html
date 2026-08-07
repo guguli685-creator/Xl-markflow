@@ -8,7 +8,6 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
-        /* 全局现代极简圆角滚动条重置 */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -45,7 +44,6 @@
             background-size: 28px 28px;
         }
 
-        /* 移动端顶部导航栏 */
         .mobile-header {
             display: none;
             position: fixed;
@@ -66,7 +64,6 @@
             gap: 8px;
         }
 
-        /* 统一图标按钮通用样式 */
         .header-action-btn {
             border: 2px solid #ecd5cc;
             width: 36px;
@@ -90,7 +87,6 @@
         
         .header-action-btn:hover, .mobile-menu-toggle:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
 
-        /* 左侧菜单栏（桌面端） */
         .sidebar {
             width: 260px;
             background: linear-gradient(135deg, rgba(255, 248, 243, 0.95), rgba(253, 245, 238, 0.85));
@@ -266,7 +262,6 @@
         }
         .add-note-sub-btn:hover { background: #faede6; border-color: #d48383; }
 
-        /* 左侧开源网站头像卡片样式 */
         .sidebar-avatar-card {
             margin-bottom: 16px;
             background: #fffbf8;
@@ -332,7 +327,6 @@
             text-overflow: ellipsis;
         }
 
-        /* 左侧底部导入导出及清空按钮区域 */
         .sidebar-bottom-actions {
             margin-top: auto;
             padding-top: 12px;
@@ -378,7 +372,6 @@
             color: #fff;
         }
 
-        /* 右侧主内容区 */
         .main-content {
             flex: 1;
             display: flex;
@@ -1516,14 +1509,14 @@
     <div class="modal-overlay" id="bookmarkModal">
         <div class="modal">
             <h3 id="bookmarkModalTitle">✨ 添加新书签</h3>
-            <input type="text" id="bookmarkTitle" placeholder="网站名称（例如：GitHub）">
-            <input type="text" id="bookmarkUrl" placeholder="网址链接（例如：https://github.com）">
-            <input type="text" id="bookmarkNote" placeholder="网站备注（可选）">
+            <input type="text" id="bookmarkTitle" placeholder="网站名称（例如：GitHub）" onkeydown="if(event.key==='Enter') saveBookmark()">
+            <input type="text" id="bookmarkUrl" placeholder="网址链接（例如：https://github.com）" onkeydown="if(event.key==='Enter') saveBookmark()">
+            <input type="text" id="bookmarkNote" placeholder="网站备注（可选）" onkeydown="if(event.key==='Enter') saveBookmark()">
             
             <div id="categorySelectionWrapper">
                 <div class="category-selector-label">选择归属卡片分类：</div>
                 <div class="category-tags" id="categoryTagsContainer"></div>
-                <input type="text" id="bookmarkGroup" placeholder="或直接手打输入新分类名称..." autocomplete="off">
+                <input type="text" id="bookmarkGroup" placeholder="或直接手打输入新分类名称..." autocomplete="off" onkeydown="if(event.key==='Enter') saveBookmark()">
             </div>
 
             <div class="modal-buttons">
@@ -1537,13 +1530,13 @@
         <div class="modal">
             <h3>✏️ 编辑网址详情</h3>
             <input type="hidden" id="editBookmarkId">
-            <input type="text" id="editBookmarkTitle" placeholder="网站名称">
-            <input type="text" id="editBookmarkUrl" placeholder="网址链接">
-            <input type="text" id="editBookmarkNote" placeholder="网站备注（可选）">
+            <input type="text" id="editBookmarkTitle" placeholder="网站名称" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
+            <input type="text" id="editBookmarkUrl" placeholder="网址链接" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
+            <input type="text" id="editBookmarkNote" placeholder="网站备注（可选）" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
             
             <div class="category-selector-label">修改归属卡片分类：</div>
             <div class="category-tags" id="editCategoryTagsContainer"></div>
-            <input type="text" id="editBookmarkGroup" placeholder="或手打输入新分类名称..." autocomplete="off">
+            <input type="text" id="editBookmarkGroup" placeholder="或手打输入新分类名称..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
 
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
@@ -1555,7 +1548,7 @@
     <div class="modal-overlay" id="cardModal">
         <div class="modal">
             <h3>📁 新建空白卡片分类</h3>
-            <input type="text" id="newCardGroupName" placeholder="输入新卡片分类名称（例如：宝藏网站）" autocomplete="off">
+            <input type="text" id="newCardGroupName" placeholder="输入新卡片分类名称（例如：宝藏网站）" autocomplete="off" onkeydown="if(event.key==='Enter') saveNewCardGroup()">
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
                 <button class="modal-btn confirm" onclick="saveNewCardGroup()">创建卡片</button>
@@ -1566,7 +1559,7 @@
     <div class="modal-overlay" id="editCardModal">
         <div class="modal">
             <h3>✏️ 编辑卡片分类名称</h3>
-            <input type="text" id="editCardGroupNameInput" placeholder="输入新的卡片分类名称" autocomplete="off">
+            <input type="text" id="editCardGroupNameInput" placeholder="输入新的卡片分类名称" autocomplete="off" onkeydown="if(event.key==='Enter') confirmEditCardGroup()">
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
                 <button class="modal-btn confirm" onclick="confirmEditCardGroup()">保存修改</button>
@@ -1577,7 +1570,7 @@
     <div class="modal-overlay" id="noteSubModal">
         <div class="modal">
             <h3>📖 创建新笔记页面</h3>
-            <input type="text" id="newNoteTitleInput" placeholder="输入页面名称（例如：读书笔记、灵感收集）" autocomplete="off">
+            <input type="text" id="newNoteTitleInput" placeholder="输入页面名称（例如：读书笔记、灵感收集）" autocomplete="off" onkeydown="if(event.key==='Enter') confirmCreateNote()">
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
                 <button class="modal-btn confirm" onclick="confirmCreateNote()">创建页面</button>
@@ -1620,7 +1613,6 @@
         let currentFolderModalGroup = '';
 
         window.addEventListener('DOMContentLoaded', async () => {
-            // 修复核心：即使本地数据被清空，只要存在绑定的仓库凭证，就自动尝试从云端恢复所有数据
             await fetchDataFromCloudRepo();
             fixMobileTouchClickIssues();
         });
@@ -1816,12 +1808,10 @@
             manualSyncBackup();
         }
 
-        /* 核心修复：自动恢复逻辑，支持从云端拉取并完全覆盖本地 */
         async function fetchDataFromCloudRepo() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
             if (!token || !repo) {
-                // 如果没有绑定凭证，直接按本地现有缓存渲染
                 renderCustomStickers();
                 switchView(currentView, currentCategory, null);
                 return;
@@ -1845,7 +1835,6 @@
                     if (bundle.frequentSearchTags) frequentSearchTags = bundle.frequentSearchTags;
 
                     persistState();
-                    console.log("✨ 成功从云端仓库自动恢复所有书签与笔记！");
                 }
             } catch (err) {
                 console.error("自动恢复连接云端失败：", err);
@@ -2655,7 +2644,7 @@
         function openNewNoteModal() {
             document.getElementById('noteSubModal').style.display = 'flex';
             document.getElementById('newNoteTitleInput').value = '';
-            document.getElementById('newNoteTitleInput').focus();
+            setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
         }
 
         function confirmCreateNote() {
@@ -2871,7 +2860,7 @@
         function openCardModal() {
             document.getElementById('cardModal').style.display = 'flex';
             document.getElementById('newCardGroupName').value = '';
-            document.getElementById('newCardGroupName').focus();
+            setTimeout(() => document.getElementById('newCardGroupName').focus(), 50);
         }
 
         function openEditCardModal(groupName, event) {
@@ -2883,8 +2872,10 @@
             document.getElementById('editCardModal').style.display = 'flex';
             const input = document.getElementById('editCardGroupNameInput');
             input.value = groupName;
-            input.focus();
-            input.select();
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 50);
         }
 
         function confirmEditCardGroup() {
@@ -2938,7 +2929,7 @@
             document.getElementById('bookmarkTitle').value = '';
             document.getElementById('bookmarkUrl').value = '';
             document.getElementById('bookmarkNote').value = '';
-            document.getElementById('bookmarkTitle').focus();
+            setTimeout(() => document.getElementById('bookmarkTitle').focus(), 50);
         }
 
         function openBookmarkModalForGroup(groupName, event) {
@@ -2963,7 +2954,7 @@
 
             renderEditCategoryTags(item.group);
             document.getElementById('editBookmarkModal').style.display = 'flex';
-            document.getElementById('editBookmarkTitle').focus();
+            setTimeout(() => document.getElementById('editBookmarkTitle').focus(), 50);
         }
 
         function renderEditCategoryTags(defaultCat = '') {
