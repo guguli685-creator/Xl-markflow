@@ -536,7 +536,7 @@
             font-size: 12px;
             font-weight: 700;
             color: #b56565;
-            display: flex;
+            display: none;
             align-items: center;
             gap: 4px;
             white-space: nowrap;
@@ -1307,6 +1307,22 @@
                 text-align: center;
                 padding: 6px 10px;
                 font-size: 12px;
+            }
+            .frequent-search-bar {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 10px;
+                padding: 10px 12px;
+            }
+            .frequent-tags-wrapper {
+                width: 100%;
+                min-width: 0;
+                flex: none;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            .add-frequent-tag-btn {
+                justify-self: end;
             }
             .search-result-item {
                 flex-direction: column;
