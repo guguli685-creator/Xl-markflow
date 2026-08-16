@@ -32,6 +32,7 @@
             width: 100vw;
             height: 100vh;
             position: relative;
+            overflow-x: hidden;
         }
 
         body {
@@ -703,13 +704,15 @@
             box-shadow: 0 4px 16px rgba(210, 185, 170, 0.1);
             user-select: none;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
+            /* 关键修复：开启 overflow: hidden 防止移动端圆角被内部子元素冲破溢出 */
+            overflow: hidden;
+            -webkit-mask-image: -webkit-radial-gradient(white, black);
         }
         .card-group:hover {
             border-color: #ecd5cc;
             box-shadow: 0 8px 24px rgba(210, 185, 170, 0.16);
         }
 
-        /* 整个卡片区域支持吸附拖放 */
         .card-group.drag-over-card {
             border-color: #d48383 !important;
             background: rgba(254, 245, 242, 0.98) !important;
@@ -2948,7 +2951,7 @@
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card-group';
 
-                /* 优化体验：让整张分类卡片（无论顶部、中间、四周、空白处）都支持自动吸附拖放，而不仅仅是狭窄的加号按钮 */
+                /* 优化：整张卡片任意位置（中间、左边、右边、空白处）均支持自动吸附拖放 */
                 cardDiv.addEventListener('dragover', (e) => e.preventDefault());
                 cardDiv.addEventListener('dragenter', (e) => {
                     e.preventDefault();
@@ -3244,7 +3247,7 @@
             renderBookmarks(bookmarks);
 
             if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                renderFolderModalItems(currentFolderModalGroup, event);
+                renderFolderModalItems(currentFolderModalGroup);
             }
         }
     </script>
