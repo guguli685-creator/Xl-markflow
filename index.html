@@ -82,6 +82,7 @@
         .sync-btn-header { background: #fff; color: #b56565; }
         .add-card-btn-header { background: #f0ded6; color: #8c4343; }
         .add-btn-header { background: #f4d6cc; color: #a34848; font-size: 18px; font-weight: bold; }
+        .layout-btn-header { background: #fffbf8; color: #b56565; }
         .mobile-menu-toggle { background: #f4d6cc; color: #a34848; font-size: 16px; border: 2px solid #ecd5cc; }
         
         .header-action-btn:hover, .mobile-menu-toggle:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
@@ -645,80 +646,163 @@
         .search-result-url { font-size: 12px; color: #b5a49c; word-break: break-all; line-height: 1.4; }
         .search-result-badge { font-size: 12px; background: #faede6; color: #d48383; padding: 4px 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 
-        .zoom-control-bar {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            background: rgba(255, 248, 243, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 2px solid #ecd5cc;
-            padding: 6px 12px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 100;
-            box-shadow: 0 8px 20px rgba(210, 185, 170, 0.2);
-        }
-        .zoom-icon-btn {
-            background: #fffbf8;
-            border: 1px solid #ecd5cc;
-            color: #a34848;
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px;
-            font-weight: bold;
-            transition: all 0.2s;
-            user-select: none;
-        }
-        .zoom-icon-btn:hover { background: #f4d6cc; color: #fff; transform: scale(1.08); }
-        
         .content-canvas {
             flex: 1;
             position: relative;
-            overflow: auto;
-            padding: 40px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 32px;
         }
 
+        /* 纯结构化布局容器 */
         #bookmarkContainer {
-            position: relative;
-            width: 3000px;
-            height: 3000px;
-            transform-origin: 0 0;
-            transition: transform 0.1s ease-out;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            transition: all 0.2s ease;
         }
 
-        /* 秩序感网格布局模式 (遵循 Untitled UI 规范) */
-        #bookmarkContainer.grid-mode {
-            display: grid !important;
+        /* 模式 1：标准网格 (Grid Mode) */
+        #bookmarkContainer.layout-grid {
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
+        }
+
+        /* 模式 2：紧凑双列流 (Compact Mode) */
+        #bookmarkContainer.layout-compact {
+            grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+            gap: 16px;
+        }
+        #bookmarkContainer.layout-compact .card-group {
+            padding: 16px 18px;
+        }
+        #bookmarkContainer.layout-compact .card-bookmarks-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            max-height: 280px;
+        }
+
+        /* 模式 3：大卡片纵向流 (List Mode) */
+        #bookmarkContainer.layout-list {
+            grid-template-columns: 1fr;
+            max-width: 960px;
+            gap: 20px;
+        }
+        #bookmarkContainer.layout-list .card-group {
             padding: 24px;
-            width: 100% !important;
-            height: auto !important;
-            transform: none !important;
         }
-        #bookmarkContainer.grid-mode .card-group {
-            position: relative !important;
-            left: auto !important;
-            top: auto !important;
-            transform: none !important;
-            width: 100% !important;
-            margin: 0;
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
-            border: 1px solid #eaecf0;
-            border-radius: 12px;
-            cursor: default;
+
+        /* 标准卡片规范 */
+        .card-group {
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1.5px solid #f2dfd6;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 16px rgba(210, 185, 170, 0.1);
+            user-select: none;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
-        #bookmarkContainer.grid-mode .card-group::before {
-            display: none; /* 隐藏胶带 */
+        .card-group:hover {
+            border-color: #ecd5cc;
+            box-shadow: 0 8px 24px rgba(210, 185, 170, 0.16);
         }
-        #bookmarkContainer.grid-mode .card-group:active {
-            z-index: 1;
+
+        .card-group-title {
+            font-size: 15px; font-weight: 700; margin-bottom: 14px;
+            color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
         }
+        .card-group-right { display: flex; align-items: center; gap: 6px; }
+        .card-group-title .count-badge { background: #faede6; color: #d48383; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        
+        .card-edit-btn, .delete-card-btn {
+            background: none; border: none; color: #c49a9a; cursor: pointer; font-size: 14px;
+            padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s;
+        }
+        .card-group:hover .card-edit-btn, .card-group:hover .delete-card-btn { opacity: 1; }
+        .card-edit-btn:hover, .delete-card-btn:hover { background: #f4d6cc; color: #a34848; }
+        
+        .card-bookmarks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 360px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .bookmark-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px; border-radius: 10px; font-size: 14px;
+            background: #fffbf8; border: 1px solid #faede6;
+            transition: all 0.2s;
+        }
+        .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
+        .bookmark-content-box {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            margin-right: 8px;
+        }
+        .bookmark-link {
+            color: #6b564d; text-decoration: none; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; font-weight: 500;
+        }
+        .bookmark-link:hover { color: #a34848; text-decoration: underline; }
+        .bookmark-note-text {
+            font-size: 11px;
+            color: #b5a49c;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+        .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
+
+        .card-add-btn {
+            margin-top: 10px; background: #fffbf8; border: 1.5px dashed #ecd5cc; color: #b56565;
+            padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .card-add-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
+        
+        .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+        .bookmark-item:hover .actions { opacity: 1; }
+        .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
+        .btn:hover { background: #e2ab9d; color: #fff; }
+
+        .folder-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(92, 75, 67, 0.4); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 250;
+        }
+        .folder-modal {
+            background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 20px;
+            padding: 24px; width: 560px; max-height: 80vh; box-shadow: 0 20px 50px rgba(210, 185, 170, 0.3);
+            display: flex; flex-direction: column; gap: 16px; position: relative;
+        }
+        .folder-modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px dashed #ecd5cc; padding-bottom: 12px;
+        }
+        .folder-modal-title { font-size: 18px; font-weight: 700; color: #b56565; display: flex; align-items: center; gap: 8px; }
+        .folder-modal-close {
+            background: #f4d6cc; border: none; color: #a34848; width: 30px; height: 30px;
+            border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .folder-modal-close:hover { background: #e2ab9d; color: #fff; }
 
         .notes-page-immersive {
             max-width: 900px;
@@ -1043,123 +1127,6 @@
             opacity: 1;
         }
 
-        .card-group {
-            position: absolute;
-            width: 330px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 2px solid #f2dfd6;
-            border-radius: 16px;
-            padding: 22px 20px 20px 20px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 12px 32px rgba(210, 185, 170, 0.18);
-            cursor: grab;
-            user-select: none;
-        }
-        .card-group:active { cursor: grabbing; z-index: 120; }
-        .card-group::before {
-            content: '';
-            position: absolute;
-            top: -10px; left: 50%;
-            transform: translateX(-50%);
-            width: 90px; height: 22px;
-            background: rgba(244, 214, 204, 0.75);
-            border-radius: 3px;
-        }
-        .card-group:nth-child(2n)::before { background: rgba(212, 227, 218, 0.75); }
-        .card-group:nth-child(3n)::before { background: rgba(238, 221, 207, 0.75); }
-
-        .card-group-title {
-            font-size: 15px; font-weight: 700; margin-bottom: 16px;
-            color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .card-group-right { display: flex; align-items: center; gap: 6px; }
-        .card-group-title .count-badge { background: #faede6; color: #d48383; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-        
-        .card-edit-btn, .delete-card-btn {
-            background: none; border: none; color: #c49a9a; cursor: pointer; font-size: 14px;
-            padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.2s;
-        }
-        .card-group:hover .card-edit-btn, .card-group:hover .delete-card-btn { opacity: 1; }
-        .card-edit-btn:hover, .delete-card-btn:hover { background: #f4d6cc; color: #a34848; }
-        
-        .card-bookmarks-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            max-height: 360px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-
-        .bookmark-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 10px; border-radius: 10px; font-size: 14px;
-            background: #fffbf8; border: 1px solid #faede6;
-            transition: all 0.2s;
-        }
-        .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
-        .bookmark-content-box {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            flex: 1;
-            margin-right: 8px;
-        }
-        .bookmark-link {
-            color: #6b564d; text-decoration: none; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap; font-weight: 500;
-        }
-        .bookmark-link:hover { color: #a34848; text-decoration: underline; }
-        .bookmark-note-text {
-            font-size: 11px;
-            color: #b5a49c;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-top: 2px;
-        }
-        .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
-
-        .card-add-btn {
-            margin-top: 8px; background: #fffbf8; border: 2px dashed #ecd5cc; color: #b56565;
-            padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 600;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .card-add-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
-        
-        .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
-        .bookmark-item:hover .actions { opacity: 1; }
-        .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
-        .btn:hover { background: #e2ab9d; color: #fff; }
-
-        .folder-modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(92, 75, 67, 0.4); 
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: none; justify-content: center; align-items: center; z-index: 250;
-        }
-        .folder-modal {
-            background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 20px;
-            padding: 24px; width: 560px; max-height: 80vh; box-shadow: 0 20px 50px rgba(210, 185, 170, 0.3);
-            display: flex; flex-direction: column; gap: 16px; position: relative;
-        }
-        .folder-modal-header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px dashed #ecd5cc; padding-bottom: 12px;
-        }
-        .folder-modal-title { font-size: 18px; font-weight: 700; color: #b56565; display: flex; align-items: center; gap: 8px; }
-        .folder-modal-close {
-            background: #f4d6cc; border: none; color: #a34848; width: 30px; height: 30px;
-            border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold;
-            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-        }
-        .folder-modal-close:hover { background: #e2ab9d; color: #fff; }
-
         .token-input-wrapper {
             position: relative;
             width: 100%;
@@ -1262,22 +1229,12 @@
                 overflow-y: auto !important;
             }
             #bookmarkContainer {
-                position: static !important;
-                width: 100% !important;
-                height: auto !important;
-                transform: none !important;
-                display: flex;
-                flex-direction: column;
+                grid-template-columns: 1fr !important;
                 gap: 16px;
             }
             .card-group {
-                position: static !important;
                 width: 100% !important;
-                transform: none !important;
                 box-shadow: 0 4px 15px rgba(210, 185, 170, 0.15);
-            }
-            .zoom-control-bar {
-                display: none !important;
             }
             
             .notes-page-immersive {
@@ -1390,7 +1347,7 @@
             <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
             <button class="header-action-btn add-card-btn-header" onclick="openCardModal()" title="新建卡片">📁</button>
             <button class="header-action-btn add-btn-header" onclick="openBookmarkModal()" title="添加新书签">+</button>
-            <button class="header-action-btn" onclick="toggleLayoutMode()" title="切换布局模式">▤</button>
+            <button class="header-action-btn layout-btn-header" id="mobileLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式">▤</button>
             <button class="header-action-btn mobile-menu-toggle" onclick="toggleMobileSidebar()" title="打开菜单">❤️</button>
         </div>
     </div>
@@ -1437,18 +1394,12 @@
                 <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
                 <button class="header-action-btn add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建卡片">📁</button>
                 <button class="header-action-btn add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
-                <button class="header-action-btn" onclick="toggleLayoutMode()" title="切换布局模式">▤</button>
+                <button class="header-action-btn layout-btn-header" id="desktopLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式（网格 / 紧凑 / 列表）">▤</button>
             </div>
         </div>
         
         <div class="content-canvas" id="canvasScrollWrapper" onclick="closeMobileSidebarOnClickOutside(event)">
             <div id="bookmarkContainer"></div>
-        </div>
-
-        <div class="zoom-control-bar" id="zoomControlBar">
-            <button class="zoom-icon-btn" onclick="adjustZoom(0.1)" title="放大">+</button>
-            <button class="zoom-icon-btn" onclick="adjustZoom(-0.1)" title="缩小" oncontextmenu="handleRightClickZoom(event)">-</button>
-            <button class="zoom-icon-btn" onclick="resetZoom()" title="重置视角">🏠</button>
         </div>
 
         <div class="search-fullscreen-view" id="searchFullscreenView">
@@ -1666,40 +1617,64 @@
         let activeNoteId = parseInt(localStorage.getItem('markflow_activeNoteId')) || 1;
         let currentView = localStorage.getItem('markflow_currentView') || 'bookmarks';
         let currentCategory = localStorage.getItem('markflow_currentCategory') || 'all';
+        
+        // 支持三种规范布局模式：'grid' | 'compact' | 'list'
         let layoutMode = localStorage.getItem('markflow_layoutMode') || 'grid';
+        if (!['grid', 'compact', 'list'].includes(layoutMode)) {
+            layoutMode = 'grid';
+        }
 
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
-        let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
 
         let bookmarkMenuCollapsed = false;
         let notesMenuCollapsed = false;
         let selectedGroup = '';
         let selectedStickerElement = null;
-        let canvasZoomScale = 1.0;
         let currentSearchTab = 'bookmark';
         let verifiedTokenTemp = '';
         let editingCardOldName = '';
         let currentFolderModalGroup = '';
 
         window.addEventListener('DOMContentLoaded', async () => {
-            if(layoutMode === 'grid') document.getElementById('bookmarkContainer').classList.add('grid-mode');
+            applyLayoutModeClass();
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
         });
 
-        function toggleLayoutMode() {
-            layoutMode = layoutMode === 'grid' ? 'free' : 'grid';
-            localStorage.setItem('markflow_layoutMode', layoutMode);
+        const layoutModesConfig = [
+            { mode: 'grid', icon: '▤', label: '网格视图 (Grid)' },
+            { mode: 'compact', icon: '▦', label: '紧凑双列 (Compact)' },
+            { mode: 'list', icon: '☰', label: '大卡片流 (List)' }
+        ];
+
+        function applyLayoutModeClass() {
             const container = document.getElementById('bookmarkContainer');
-            if (layoutMode === 'grid') {
-                container.classList.add('grid-mode');
-                container.style.transform = 'none';
-            } else {
-                container.classList.remove('grid-mode');
-                applyZoom();
+            container.className = `layout-${layoutMode}`;
+            
+            const currentConf = layoutModesConfig.find(item => item.mode === layoutMode) || layoutModesConfig[0];
+            const btnDesktop = document.getElementById('desktopLayoutBtn');
+            const btnMobile = document.getElementById('mobileLayoutBtn');
+            
+            if (btnDesktop) {
+                btnDesktop.innerText = currentConf.icon;
+                btnDesktop.title = `当前：${currentConf.label}（点击切换下一个布局）`;
             }
+            if (btnMobile) {
+                btnMobile.innerText = currentConf.icon;
+                btnMobile.title = `当前：${currentConf.label}`;
+            }
+        }
+
+        function cycleLayoutMode() {
+            const currentIndex = layoutModesConfig.findIndex(item => item.mode === layoutMode);
+            const nextIndex = (currentIndex + 1) % layoutModesConfig.length;
+            layoutMode = layoutModesConfig[nextIndex].mode;
+            localStorage.setItem('markflow_layoutMode', layoutMode);
+            
+            applyLayoutModeClass();
             renderBookmarks(bookmarks);
+            showToast(`已切换为：${layoutModesConfig[nextIndex].label}`);
         }
 
         async function fetchTagsFromJsonRepo() {
@@ -1731,7 +1706,6 @@
             localStorage.setItem('markflow_currentCategory', currentCategory);
             localStorage.setItem('markflow_layoutMode', layoutMode);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
-            localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
         }
 
         function toggleMobileSidebar() {
@@ -1841,9 +1815,9 @@
                 currentCategory = 'all';
                 layoutMode = 'grid';
                 customStickers = [];
-                cardPositions = {};
                 
                 persistState();
+                applyLayoutModeClass();
                 switchView('bookmarks', 'all');
                 alert('🧹 所有数据已清空重置。');
             }
@@ -1918,17 +1892,13 @@
             }
 
             try {
-                let restoredAny = false;
-
                 const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (fowRes.ok) {
                     const fowData = await fowRes.json();
                     const fowJson = JSON.parse(decodeURIComponent(escape(atob(fowData.content))));
                     if (fowJson.categories) localStorage.setItem('markflow_categories', JSON.stringify(fowJson.categories));
                     if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
-                    if (fowJson.cardPositions) localStorage.setItem('markflow_cardPositions', JSON.stringify(fowJson.cardPositions));
                     if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
-                    restoredAny = true;
                 }
 
                 const bjRes = await fetch(`https://api.github.com/repos/${repo}/contents/notes.bj`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1936,7 +1906,6 @@
                     const bjData = await bjRes.json();
                     const bjJson = JSON.parse(decodeURIComponent(escape(atob(bjData.content))));
                     if (bjJson.notesList) localStorage.setItem('markflow_notesList', JSON.stringify(bjJson.notesList));
-                    restoredAny = true;
                 }
 
                 await fetchTagsFromJsonRepo();
@@ -1964,7 +1933,7 @@
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
             const bundleData = {
-                categories, bookmarks, cardPositions, customStickers,
+                categories, bookmarks, customStickers,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -2283,28 +2252,6 @@
         function jumpToNote(noteId) {
             closeSearchFullscreen();
             switchView('notes', noteId);
-        }
-
-        function adjustZoom(delta) {
-            canvasZoomScale = Math.min(2.0, Math.max(0.3, canvasZoomScale + delta));
-            applyZoom();
-        }
-
-        function handleRightClickZoom(e) {
-            e.preventDefault();
-            adjustZoom(-0.1);
-        }
-
-        function resetZoom() {
-            canvasZoomScale = 1.0;
-            applyZoom();
-        }
-
-        function applyZoom() {
-            const container = document.getElementById('bookmarkContainer');
-            if (layoutMode !== 'grid') {
-                container.style.transform = `scale(${canvasZoomScale})`;
-            }
         }
 
         function dragSticker(e, data) {
@@ -2717,23 +2664,20 @@
                 document.getElementById('sidebar').classList.remove('mobile-open');
             }
 
-            const bmContainer = document.getElementById('bookmarkContainer');
             const notesContainer = document.getElementById('notesContainer');
             const topHeader = document.getElementById('topHeader');
-            const zoomBar = document.getElementById('zoomControlBar');
 
             if (view === 'bookmarks') {
                 if(targetId !== null) currentCategory = targetId;
                 document.getElementById('canvasScrollWrapper').style.display = 'block';
                 notesContainer.style.display = 'none';
                 topHeader.style.display = 'flex';
-                zoomBar.style.display = layoutMode === 'grid' ? 'none' : 'flex';
+                applyLayoutModeClass();
                 renderBookmarks(bookmarks);
             } else {
                 document.getElementById('canvasScrollWrapper').style.display = 'none';
                 notesContainer.style.display = 'flex';
                 topHeader.style.display = 'none';
-                zoomBar.style.display = 'none';
                 
                 if (targetId !== null) {
                     activeNoteId = targetId;
@@ -2806,8 +2750,11 @@
             showToast();
         }
 
-        function showToast() {
+        function showToast(msg) {
             const toast = document.getElementById('toastTip');
+            if (msg) toast.innerText = msg;
+            else toast.innerText = 'ฅ ^•ﻌ•^ฅ 操作已记录';
+            
             toast.classList.add('show');
             setTimeout(() => {
                 toast.classList.remove('show');
@@ -2899,7 +2846,6 @@
             container.innerHTML = '';
 
             const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
-            const isMobile = window.innerWidth <= 768;
 
             if (catsToRender.length === 0) {
                 container.innerHTML = `<div style="text-align:center; padding: 120px 20px; color:#b5a49c; font-size:15px; font-style:italic;">✨ 暂无书签分类，点击右上角 “+” 添加书签、新建卡片，或从左侧从仓库恢复网页。</div>`;
@@ -2907,33 +2853,15 @@
                 return;
             }
             
-            catsToRender.forEach((groupName, index) => {
+            catsToRender.forEach((groupName) => {
                 const items = data.filter(b => b.group === groupName);
-                
-                if (!cardPositions[groupName] || typeof cardPositions[groupName].x !== 'number' || typeof cardPositions[groupName].y !== 'number') {
-                    cardPositions[groupName] = {
-                        x: 60 + (index % 4) * 370,
-                        y: 60 + Math.floor(index / 4) * 380,
-                        rotate: (index % 2 === 0 ? -1.2 : 1.5)
-                    };
-                }
-                const pos = cardPositions[groupName];
 
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card-group';
-                
-                if (!isMobile) {
-                    cardDiv.style.left = pos.x + 'px';
-                    cardDiv.style.top = pos.y + 'px';
-                    if (layoutMode !== 'grid') {
-                        cardDiv.style.transform = `rotate(${pos.rotate || 0}deg)`;
-                        initDrag(cardDiv, groupName);
-                    }
-                }
 
                 let cardHtml = `
                     <div class="card-group-title">
-                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" title="点击展开快捷大文件夹" onclick="openFolderModal('${groupName}')">${groupName}</span>
+                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" title="点击展开大文件夹展开视图" onclick="openFolderModal('${groupName}')">📁 ${groupName}</span>
                         <div class="card-group-right">
                             <span class="count-badge">${items.length}</span>
                             <button class="card-edit-btn" onclick="openEditCardModal('${groupName}', event)" title="编辑分类名称">✏️</button>
@@ -2977,63 +2905,6 @@
             updateSidebar();
         }
 
-        function initDrag(cardElement, groupName) {
-            let isDragging = false;
-            let hasMoved = false;
-            let startX, startY;
-            let clickStartX, clickStartY;
-
-            cardElement.addEventListener('mousedown', (e) => {
-                if (layoutMode === 'grid') return;
-                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('.card-group-right') || e.target.closest('.card-add-btn') || e.target.closest('.actions')) {
-                    return;
-                }
-                isDragging = true;
-                hasMoved = false;
-
-                clickStartX = e.clientX;
-                clickStartY = e.clientY;
-
-                startX = e.clientX - cardPositions[groupName].x;
-                startY = e.clientY - cardPositions[groupName].y;
-                cardElement.style.zIndex = 150;
-            });
-
-            const onMouseMove = (e) => {
-                if (!isDragging || layoutMode === 'grid') return;
-
-                const moveDist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
-                if (moveDist > 5) {
-                    hasMoved = true;
-                }
-
-                const newX = e.clientX - startX;
-                const newY = e.clientY - startY;
-                cardPositions[groupName].x = newX;
-                cardPositions[groupName].y = newY;
-                cardElement.style.left = newX + 'px';
-                cardElement.style.top = newY + 'px';
-            };
-
-            const onMouseUp = (e) => {
-                if (isDragging) {
-                    isDragging = false;
-                    cardElement.style.zIndex = 1;
-                    
-                    if (hasMoved) {
-                        persistState();
-                    } else {
-                        if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A' && !e.target.closest('.card-group-right') && !e.target.closest('.card-add-btn') && !e.target.closest('.actions')) {
-                            openFolderModal(groupName);
-                        }
-                    }
-                }
-            };
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-        }
-
         function deleteBookmark(id, event) {
             if(event) event.stopPropagation();
             bookmarks = bookmarks.filter(b => b.id !== id);
@@ -3046,7 +2917,6 @@
             if (confirm(`确定要删除“${groupName}”这个分类吗？里面的书签也会被移除哦~`)) {
                 categories = categories.filter(c => c !== groupName);
                 bookmarks = bookmarks.filter(b => b.group !== groupName);
-                delete cardPositions[groupName];
                 if (currentCategory === groupName) {
                     currentCategory = 'all';
                 }
@@ -3102,11 +2972,6 @@
                     b.group = newName;
                 }
             });
-
-            if (cardPositions[editingCardOldName]) {
-                cardPositions[newName] = cardPositions[editingCardOldName];
-                delete cardPositions[editingCardOldName];
-            }
 
             if (currentCategory === editingCardOldName) {
                 currentCategory = newName;
@@ -3240,13 +3105,6 @@
             }
             if (!categories.includes(groupName)) {
                 categories.push(groupName);
-                const allCats = getAllCategories();
-                const index = allCats.indexOf(groupName);
-                cardPositions[groupName] = {
-                    x: 60 + (index % 4) * 370,
-                    y: 60 + Math.floor(index / 4) * 380,
-                    rotate: 1.0
-                };
             }
             closeModal();
             persistState();
