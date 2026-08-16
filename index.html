@@ -747,6 +747,7 @@
             padding: 8px 10px; border-radius: 10px; font-size: 14px;
             background: #fffbf8; border: 1px solid #faede6;
             transition: all 0.2s;
+            position: relative;
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
         .bookmark-content-box {
@@ -770,6 +771,74 @@
             margin-top: 2px;
         }
         .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
+
+        /* 网页悬浮预览浮窗样式 */
+        .bookmark-preview-popover {
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%) translateX(12px);
+            width: 340px;
+            height: 220px;
+            background: #fff8f3;
+            border: 2px solid #ecd5cc;
+            border-radius: 14px;
+            box-shadow: 0 12px 35px rgba(210, 185, 170, 0.35);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: popoverFadeIn 0.2s ease-out;
+            pointer-events: none;
+        }
+        @keyframes popoverFadeIn {
+            from { opacity: 0; transform: translateY(-50%) translateX(4px) scale(0.96); }
+            to { opacity: 1; transform: translateY(-50%) translateX(12px) scale(1); }
+        }
+        .bookmark-preview-header {
+            background: #faede6;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #b56565;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #f2dfd6;
+        }
+        .bookmark-preview-body {
+            flex: 1;
+            position: relative;
+            background: #fff;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .bookmark-preview-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            transform: scale(0.75);
+            transform-origin: 0 0;
+            width: 133.33%;
+            height: 133.33%;
+            pointer-events: none;
+        }
+        .preview-fallback-tips {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            text-align: center;
+            color: #8c7368;
+            font-size: 13px;
+            background: #fffbf8;
+            gap: 6px;
+        }
 
         .card-add-btn {
             margin-top: 10px; background: #fffbf8; border: 1.5px dashed #ecd5cc; color: #b56565;
@@ -2981,8 +3050,12 @@
                     cardHtml += `<div class="card-bookmarks-list">`;
                     items.forEach(item => {
                         const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
+                        
+                        /* 为每个网址项（bookmark-item）增加悬浮预览（hover preview）事件 */
                         cardHtml += `
-                            <div class="bookmark-item">
+                            <div class="bookmark-item" 
+                                 onmouseenter="showBookmarkPreview(this, '${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')" 
+                                 onmouseleave="hideBookmarkPreview(this)">
                                 <div class="bookmark-content-box">
                                     <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
                                     ${noteHtml}
@@ -3013,6 +3086,49 @@
             });
 
             updateSidebar();
+        }
+
+        /* 悬浮预览核心函数：鼠标移入时生成精美小浮窗加载网页 */
+        function showBookmarkPreview(itemEl, url, title) {
+            // 防止重复生成
+            if (itemEl.querySelector('.bookmark-preview-popover')) return;
+
+            const popover = document.createElement('div');
+            popover.className = 'bookmark-preview-popover';
+            popover.style.display = 'flex';
+
+            popover.innerHTML = `
+                <div class="bookmark-preview-header">
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; margin-right:6px;">🌐 ${title}</span>
+                    <span style="font-size:10px; color:#a34848; opacity:0.8;">预览中</span>
+                </div>
+                <div class="bookmark-preview-body">
+                    <iframe src="${url}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+                    <div class="preview-fallback-tips" id="previewFallback">
+                        <span>🔗 目标网址：${url}</span>
+                        <span style="font-size: 11px; opacity:0.8;">(部分网站由于防嵌入安全策略无法在内联 iframe 中显示，可直接点击访问)</span>
+                    </div>
+                </div>
+            `;
+
+            itemEl.appendChild(popover);
+
+            // 1.5 秒后若 iframe 未加载或跨域，隐藏提示
+            const iframe = popover.querySelector('iframe');
+            iframe.onload = function() {
+                try {
+                    const fallback = popover.querySelector('#previewFallback');
+                    if(fallback) fallback.style.display = 'none';
+                } catch(e) {}
+            };
+        }
+
+        /* 鼠标移出时立即移除浮窗，退出预览状态 */
+        function hideBookmarkPreview(itemEl) {
+            const popover = itemEl.querySelector('.bookmark-preview-popover');
+            if (popover) {
+                popover.remove();
+            }
         }
 
         function deleteBookmark(id, event) {
