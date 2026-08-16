@@ -1563,7 +1563,7 @@
             
             <div class="category-selector-label">修改归属卡片分类：</div>
             <div class="category-tags" id="editCategoryTagsContainer"></div>
-            <input type="text" id="editBookmarkGroup" placeholder="或手打输入新分类名称..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
+            <input type="text" id="editBookmarkGroup" placeholder="or type new category..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmEditBookmark()">
 
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
@@ -1618,7 +1618,6 @@
         let currentView = localStorage.getItem('markflow_currentView') || 'bookmarks';
         let currentCategory = localStorage.getItem('markflow_currentCategory') || 'all';
         
-        // 支持三种规范布局模式：'grid' | 'compact' | 'list'
         let layoutMode = localStorage.getItem('markflow_layoutMode') || 'grid';
         if (!['grid', 'compact', 'list'].includes(layoutMode)) {
             layoutMode = 'grid';
