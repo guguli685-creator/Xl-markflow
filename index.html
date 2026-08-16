@@ -704,7 +704,6 @@
             box-shadow: 0 4px 16px rgba(210, 185, 170, 0.1);
             user-select: none;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
-            /* 关键修复：开启 overflow: hidden 防止移动端圆角被内部子元素冲破溢出 */
             overflow: hidden;
             -webkit-mask-image: -webkit-radial-gradient(white, black);
         }
@@ -2951,7 +2950,6 @@
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card-group';
 
-                /* 优化：整张卡片任意位置（中间、左边、右边、空白处）均支持自动吸附拖放 */
                 cardDiv.addEventListener('dragover', (e) => e.preventDefault());
                 cardDiv.addEventListener('dragenter', (e) => {
                     e.preventDefault();
