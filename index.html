@@ -709,6 +709,13 @@
             box-shadow: 0 8px 24px rgba(210, 185, 170, 0.16);
         }
 
+        /* 整个卡片区域支持吸附拖放 */
+        .card-group.drag-over-card {
+            border-color: #d48383 !important;
+            background: rgba(254, 245, 242, 0.98) !important;
+            box-shadow: 0 0 0 3px rgba(212, 131, 131, 0.2) !important;
+        }
+
         .card-group-title {
             font-size: 15px; font-weight: 700; margin-bottom: 14px;
             color: #b56565; border-bottom: 2px dotted #faede6; padding-bottom: 10px;
@@ -2845,8 +2852,8 @@
         function handleDropBookmark(e, groupName) {
             e.preventDefault();
             e.stopPropagation();
-            const btn = e.currentTarget;
-            btn.classList.remove('drag-over');
+            const targetEl = e.currentTarget;
+            targetEl.classList.remove('drag-over', 'drag-over-card');
 
             let url = '';
             let title = '';
@@ -2940,6 +2947,21 @@
 
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card-group';
+
+                /* 优化体验：让整张分类卡片（无论顶部、中间、四周、空白处）都支持自动吸附拖放，而不仅仅是狭窄的加号按钮 */
+                cardDiv.addEventListener('dragover', (e) => e.preventDefault());
+                cardDiv.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    cardDiv.classList.add('drag-over-card');
+                });
+                cardDiv.addEventListener('dragleave', (e) => {
+                    if (!cardDiv.contains(e.relatedTarget)) {
+                        cardDiv.classList.remove('drag-over-card');
+                    }
+                });
+                cardDiv.addEventListener('drop', (e) => {
+                    handleDropBookmark(e, groupName);
+                });
 
                 let cardHtml = `
                     <div class="card-group-title">
@@ -3222,7 +3244,7 @@
             renderBookmarks(bookmarks);
 
             if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                renderFolderModalItems(currentFolderModalGroup);
+                renderFolderModalItems(currentFolderModalGroup, event);
             }
         }
     </script>
