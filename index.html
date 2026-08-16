@@ -691,6 +691,35 @@
             transition: transform 0.1s ease-out;
         }
 
+        /* 秩序感网格布局模式 (遵循 Untitled UI 规范) */
+        #bookmarkContainer.grid-mode {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            padding: 24px;
+            width: 100% !important;
+            height: auto !important;
+            transform: none !important;
+        }
+        #bookmarkContainer.grid-mode .card-group {
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            transform: none !important;
+            width: 100% !important;
+            margin: 0;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+            border: 1px solid #eaecf0;
+            border-radius: 12px;
+            cursor: default;
+        }
+        #bookmarkContainer.grid-mode .card-group::before {
+            display: none; /* 隐藏胶带 */
+        }
+        #bookmarkContainer.grid-mode .card-group:active {
+            z-index: 1;
+        }
+
         .notes-page-immersive {
             max-width: 900px;
             margin: 0 auto;
@@ -1361,6 +1390,7 @@
             <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
             <button class="header-action-btn add-card-btn-header" onclick="openCardModal()" title="新建卡片">📁</button>
             <button class="header-action-btn add-btn-header" onclick="openBookmarkModal()" title="添加新书签">+</button>
+            <button class="header-action-btn" onclick="toggleLayoutMode()" title="切换布局模式">▤</button>
             <button class="header-action-btn mobile-menu-toggle" onclick="toggleMobileSidebar()" title="打开菜单">❤️</button>
         </div>
     </div>
@@ -1407,6 +1437,7 @@
                 <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
                 <button class="header-action-btn add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建卡片">📁</button>
                 <button class="header-action-btn add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
+                <button class="header-action-btn" onclick="toggleLayoutMode()" title="切换布局模式">▤</button>
             </div>
         </div>
         
@@ -1624,7 +1655,6 @@
     </div>
 
     <script>
-        // 绝对干净：初始为空数组，绝不凭空捏造任何默认标签
         let frequentSearchTags = [];
 
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
@@ -1636,6 +1666,7 @@
         let activeNoteId = parseInt(localStorage.getItem('markflow_activeNoteId')) || 1;
         let currentView = localStorage.getItem('markflow_currentView') || 'bookmarks';
         let currentCategory = localStorage.getItem('markflow_currentCategory') || 'all';
+        let layoutMode = localStorage.getItem('markflow_layoutMode') || 'grid';
 
         let customStickers = JSON.parse(localStorage.getItem('markflow_customStickers')) || [];
         let cardPositions = JSON.parse(localStorage.getItem('markflow_cardPositions')) || {};
@@ -1651,10 +1682,25 @@
         let currentFolderModalGroup = '';
 
         window.addEventListener('DOMContentLoaded', async () => {
+            if(layoutMode === 'grid') document.getElementById('bookmarkContainer').classList.add('grid-mode');
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
         });
+
+        function toggleLayoutMode() {
+            layoutMode = layoutMode === 'grid' ? 'free' : 'grid';
+            localStorage.setItem('markflow_layoutMode', layoutMode);
+            const container = document.getElementById('bookmarkContainer');
+            if (layoutMode === 'grid') {
+                container.classList.add('grid-mode');
+                container.style.transform = 'none';
+            } else {
+                container.classList.remove('grid-mode');
+                applyZoom();
+            }
+            renderBookmarks(bookmarks);
+        }
 
         async function fetchTagsFromJsonRepo() {
             const token = localStorage.getItem('gh_token');
@@ -1673,7 +1719,6 @@
                     }
                 }
             } catch (err) {
-                // 仓库暂无 tags.json 保持空数组
             }
         }
 
@@ -1684,6 +1729,7 @@
             localStorage.setItem('markflow_activeNoteId', activeNoteId);
             localStorage.setItem('markflow_currentView', currentView);
             localStorage.setItem('markflow_currentCategory', currentCategory);
+            localStorage.setItem('markflow_layoutMode', layoutMode);
             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
             localStorage.setItem('markflow_cardPositions', JSON.stringify(cardPositions));
         }
@@ -1793,6 +1839,7 @@
                 activeNoteId = 1;
                 currentView = 'bookmarks';
                 currentCategory = 'all';
+                layoutMode = 'grid';
                 customStickers = [];
                 cardPositions = {};
                 
@@ -1904,7 +1951,6 @@
             }
         }
 
-        // 纯净的书签流备份（只管 data.fow）
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1953,7 +1999,6 @@
             }
         }
 
-        // 独立更新 tags.json 文件到私有仓库
         async function updateTagsJsonInRepo(newTagsArray) {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -2127,7 +2172,6 @@
             }
         }
 
-        // 严格死守：只有明确点击“+ 存为标签”按钮，才会把当前输入框的词收录为标签，并更新 tags.json
         function addCurrentAsFrequentTag() {
             const input = document.getElementById('fullscreenSearchInput');
             if (!input) return;
@@ -2177,7 +2221,6 @@
             handleFullscreenSearch();
         }
 
-        // 纯粹检索：输入打字时绝不自动干涉标签数组
         function handleFullscreenSearch() {
             const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
             renderFullscreenResults(keyword);
@@ -2259,7 +2302,9 @@
 
         function applyZoom() {
             const container = document.getElementById('bookmarkContainer');
-            container.style.transform = `scale(${canvasZoomScale})`;
+            if (layoutMode !== 'grid') {
+                container.style.transform = `scale(${canvasZoomScale})`;
+            }
         }
 
         function dragSticker(e, data) {
@@ -2682,7 +2727,7 @@
                 document.getElementById('canvasScrollWrapper').style.display = 'block';
                 notesContainer.style.display = 'none';
                 topHeader.style.display = 'flex';
-                zoomBar.style.display = 'flex';
+                zoomBar.style.display = layoutMode === 'grid' ? 'none' : 'flex';
                 renderBookmarks(bookmarks);
             } else {
                 document.getElementById('canvasScrollWrapper').style.display = 'none';
@@ -2880,8 +2925,10 @@
                 if (!isMobile) {
                     cardDiv.style.left = pos.x + 'px';
                     cardDiv.style.top = pos.y + 'px';
-                    cardDiv.style.transform = `rotate(${pos.rotate || 0}deg)`;
-                    initDrag(cardDiv, groupName);
+                    if (layoutMode !== 'grid') {
+                        cardDiv.style.transform = `rotate(${pos.rotate || 0}deg)`;
+                        initDrag(cardDiv, groupName);
+                    }
                 }
 
                 let cardHtml = `
@@ -2937,6 +2984,7 @@
             let clickStartX, clickStartY;
 
             cardElement.addEventListener('mousedown', (e) => {
+                if (layoutMode === 'grid') return;
                 if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('.card-group-right') || e.target.closest('.card-add-btn') || e.target.closest('.actions')) {
                     return;
                 }
@@ -2952,7 +3000,7 @@
             });
 
             const onMouseMove = (e) => {
-                if (!isDragging) return;
+                if (!isDragging || layoutMode === 'grid') return;
 
                 const moveDist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
                 if (moveDist > 5) {
