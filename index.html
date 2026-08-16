@@ -654,6 +654,7 @@
             padding: 32px;
         }
 
+        /* 纯结构化布局容器 */
         #bookmarkContainer {
             width: 100%;
             max-width: 1600px;
@@ -662,11 +663,13 @@
             transition: all 0.2s ease;
         }
 
+        /* 模式 1：标准网格 (Grid Mode) */
         #bookmarkContainer.layout-grid {
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
         }
 
+        /* 模式 2：紧凑双列流 (Compact Mode) */
         #bookmarkContainer.layout-compact {
             grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
             gap: 16px;
@@ -681,6 +684,7 @@
             max-height: 280px;
         }
 
+        /* 模式 3：大卡片纵向流 (List Mode) */
         #bookmarkContainer.layout-list {
             grid-template-columns: 1fr;
             max-width: 960px;
@@ -690,6 +694,7 @@
             padding: 24px;
         }
 
+        /* 标准卡片规范 */
         .card-group {
             position: relative;
             background: rgba(255, 255, 255, 0.95);
@@ -770,14 +775,6 @@
         }
         .card-add-btn:hover { background: #faede6; border-color: #d48383; color: #a34848; }
         
-        /* 拖拽悬停至“+添加网页”按钮时的视觉高亮反馈 */
-        .card-add-btn.drag-over {
-            background: #f4d6cc !important;
-            border-color: #d48383 !important;
-            color: #a34848 !important;
-            transform: scale(1.02);
-        }
-
         .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
         .bookmark-item:hover .actions { opacity: 1; }
         .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
@@ -1501,7 +1498,7 @@
                 <button class="folder-modal-close" onclick="closeFolderModalDirect()">×</button>
             </div>
             <div class="card-bookmarks-list" id="folderModalItemsList" style="max-height: 50vh;"></div>
-            <button class="card-add-btn" ondragover="event.preventDefault()" ondragleave="this.classList.remove('drag-over')" ondragenter="this.classList.add('drag-over')" ondrop="handleDropBookmark(event, currentFolderModalGroup)" onclick="openBookmarkModalForGroup(currentFolderModalGroup, event)">
+            <button class="card-add-btn" onclick="openBookmarkModalForGroup(currentFolderModalGroup, event)">
                 <span>+ 在当前分类下添加网址</span>
             </button>
         </div>
@@ -2843,93 +2840,6 @@
             listContainer.innerHTML = html;
         }
 
-        /* 核心新功能：处理将浏览器标签/网页链接直接拖拽并释放在“+添加网页”按钮上的快捷添加逻辑 */
-        function handleDropBookmark(e, groupName) {
-            e.preventDefault();
-            e.stopPropagation();
-            const btn = e.currentTarget;
-            btn.classList.remove('drag-over');
-
-            let url = '';
-            let title = '';
-
-            // 1. 尝试从浏览器拖拽的网页链接 (text/uri-list) 获取
-            const uriList = e.dataTransfer.getData('text/uri-list');
-            if (uriList) {
-                url = uriList.split('\n')[0].trim();
-            }
-
-            // 2. 如果没有，尝试从标准纯文本 (text/plain) 获取
-            if (!url) {
-                const plainText = e.dataTransfer.getData('text/plain');
-                if (plainText && (plainText.startsWith('http://') || plainText.startsWith('https://'))) {
-                    url = plainText.trim();
-                }
-            }
-
-            // 3. 尝试读取网页标题 (text/html 或 text/plain 作为标题备用)
-            const htmlData = e.dataTransfer.getData('text/html');
-            if (htmlData) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlData, 'text/html');
-                const aTag = doc.querySelector('a');
-                if (aTag) {
-                    if (!url) url = aTag.href;
-                    title = aTag.textContent.trim();
-                }
-            }
-
-            // 若仍无 url，尝试直接把拖入的纯文本作为网址或标题
-            if (!url) {
-                const fallbackText = e.dataTransfer.getData('text/plain');
-                if (fallbackText) {
-                    if (fallbackText.startsWith('http')) {
-                        url = fallbackText;
-                        title = fallbackText;
-                    } else {
-                        title = fallbackText;
-                        url = 'https://' + fallbackText;
-                    }
-                }
-            }
-
-            if (!url) {
-                alert('未能识别到有效的网址链接，请尝试直接点击“+ 添加网页”输入。');
-                return;
-            }
-
-            if (!title) {
-                try {
-                    const parsedObj = new URL(url);
-                    title = parsedObj.hostname;
-                } catch(err) {
-                    title = url;
-                }
-            }
-
-            if (!categories.includes(groupName) && !getAllCategories().includes(groupName)) {
-                categories.push(groupName);
-            }
-
-            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
-            bookmarks.push({
-                id: newId,
-                group: groupName,
-                title: title,
-                url: url,
-                note: ''
-            });
-
-            persistState();
-            renderBookmarks(bookmarks);
-            showToast(`✨ 快捷添加成功：${title}`);
-
-            // 如果当前正处于大文件夹弹窗中，同步刷新弹窗内容
-            if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                renderFolderModalItems(groupName);
-            }
-        }
-
         function renderBookmarks(data) {
             const container = document.getElementById('bookmarkContainer');
             container.innerHTML = '';
@@ -2981,14 +2891,8 @@
                     cardHtml += `</div>`;
                 }
 
-                /* 关键绑定：为每个卡片下方的“+ 添加网页”按钮增加拖拽放置监听事件 */
                 cardHtml += `
-                    <div class="card-add-btn" 
-                         ondragover="event.preventDefault()" 
-                         ondragleave="this.classList.remove('drag-over')" 
-                         ondragenter="this.classList.add('drag-over')" 
-                         ondrop="handleDropBookmark(event, '${groupName}')" 
-                         onclick="openBookmarkModalForGroup('${groupName}', event)">
+                    <div class="card-add-btn" onclick="openBookmarkModalForGroup('${groupName}', event)">
                         <span>+ 添加网页</span>
                     </div>
                 `;
@@ -3023,7 +2927,7 @@
         function openCardModal() {
             document.getElementById('cardModal').style.display = 'flex';
             document.getElementById('newCardGroupName').value = '';
-            setTimeout(() => document.getElementById('newCardGroupName'.trim()).focus(), 50);
+            setTimeout(() => document.getElementById('newCardGroupName').focus(), 50);
         }
 
         function openEditCardModal(groupName, event) {
