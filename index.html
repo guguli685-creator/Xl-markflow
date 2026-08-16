@@ -745,11 +745,19 @@
         .bookmark-item {
             display: flex; justify-content: space-between; align-items: center;
             padding: 8px 10px; border-radius: 10px; font-size: 14px;
-            background: #fffbf8; border: 1px solid #faede6;
+            background: #fffbf8; border: 1.5px solid #faede6;
             transition: all 0.2s;
-            position: relative;
+            cursor: pointer;
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
+        
+        /* 选中态：粉色高亮 */
+        .bookmark-item.preview-selected {
+            background: #f4d6cc !important;
+            border-color: #d48383 !important;
+            box-shadow: 0 0 0 2px rgba(212, 131, 131, 0.3);
+        }
+
         .bookmark-content-box {
             display: flex;
             flex-direction: column;
@@ -772,72 +780,43 @@
         }
         .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
 
-        /* 网页悬浮预览浮窗样式 */
-        .bookmark-preview-popover {
-            position: absolute;
-            left: 100%;
-            top: 50%;
-            transform: translateY(-50%) translateX(12px);
-            width: 340px;
-            height: 220px;
-            background: #fff8f3;
+        /* 优化后的网页预览弹窗：兼容 iframe 无法加载时的安全备用展示 */
+        .bookmark-preview-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(92, 75, 67, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 600;
+        }
+        .bookmark-preview-modal-box {
+            background: #fff8f3; border: 2px solid #f2dfd6; border-radius: 20px;
+            padding: 24px; width: 85vw; max-width: 860px; height: 75vh;
+            box-shadow: 0 20px 50px rgba(210, 185, 170, 0.35);
+            display: flex; flex-direction: column; gap: 16px; position: relative;
+        }
+        .bookmark-preview-modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px dashed #ecd5cc; padding-bottom: 12px;
+        }
+        .bookmark-preview-modal-title { font-size: 17px; font-weight: 700; color: #b56565; display: flex; align-items: center; gap: 8px; }
+        
+        .bookmark-preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
             border: 2px solid #ecd5cc;
             border-radius: 14px;
-            box-shadow: 0 12px 35px rgba(210, 185, 170, 0.35);
-            z-index: 300;
-            display: none;
-            flex-direction: column;
             overflow: hidden;
-            animation: popoverFadeIn 0.2s ease-out;
-            pointer-events: none;
-        }
-        @keyframes popoverFadeIn {
-            from { opacity: 0; transform: translateY(-50%) translateX(4px) scale(0.96); }
-            to { opacity: 1; transform: translateY(-50%) translateX(12px) scale(1); }
-        }
-        .bookmark-preview-header {
-            background: #faede6;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 700;
-            color: #b56565;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #f2dfd6;
-        }
-        .bookmark-preview-body {
-            flex: 1;
             position: relative;
-            background: #fff;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
         }
-        .bookmark-preview-body iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #fff;
-            transform: scale(0.75);
-            transform-origin: 0 0;
-            width: 133.33%;
-            height: 133.33%;
-            pointer-events: none;
+        .bookmark-preview-container iframe {
+            width: 100%; height: 100%; border: none; background: #fff;
         }
-        .preview-fallback-tips {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            text-align: center;
-            color: #8c7368;
-            font-size: 13px;
-            background: #fffbf8;
-            gap: 6px;
+        .preview-safeguard-box {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fffbf8; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px; text-align: center; gap: 14px; color: #5c4b43;
         }
 
         .card-add-btn {
@@ -1568,6 +1547,28 @@
         </div>
     </div>
 
+    <!-- 网页预览弹窗（双重保障：若被网站拒绝嵌入，则提供缩略图或直接跳转按钮） -->
+    <div class="bookmark-preview-modal-overlay" id="bookmarkPreviewModal" onclick="closeBookmarkPreviewModal(event)">
+        <div class="bookmark-preview-modal-box">
+            <div class="bookmark-preview-modal-header">
+                <div class="bookmark-preview-modal-title">
+                    <span>🌐</span>
+                    <span id="previewModalTitleText">网页预览</span>
+                </div>
+                <button class="folder-modal-close" onclick="closeBookmarkPreviewModalDirect()">×</button>
+            </div>
+            <div class="bookmark-preview-container" id="previewContainerWrapper">
+                <iframe id="previewModalIframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+                <div class="preview-safeguard-box" id="previewSafeguardBox" style="display: none;">
+                    <span style="font-size: 16px; font-weight: 700; color: #b56565;">🔒 目标网站启用了防内嵌保护 (X-Frame-Options)</span>
+                    <span id="previewSafeguardUrl" style="font-size: 13px; color: #8c7368; word-break: break-all;"></span>
+                    <span style="font-size: 13px; color: #a34848;">该网站安全策略拒绝在弹窗中显示。您可以点击下方按钮直接前往：</span>
+                    <a id="previewExternalLinkBtn" href="#" target="_blank" class="modal-btn confirm" style="text-decoration:none; padding: 10px 24px; font-size: 14px;">新标签页直接打开 ↗</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="folder-modal-overlay" id="folderModalOverlay" onclick="closeFolderModal(event)">
         <div class="folder-modal">
             <div class="folder-modal-header">
@@ -1713,6 +1714,8 @@
         let verifiedTokenTemp = '';
         let editingCardOldName = '';
         let currentFolderModalGroup = '';
+        
+        let previewSelectedBookmarkId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             applyLayoutModeClass();
@@ -2634,10 +2637,20 @@
             };
         }
 
+        /* 快捷键监听：当某个网址条目处于选中（高亮）状态时，按下空格键弹出带 fallback 的预览弹窗 */
         window.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.code === 'Space') {
                 const activeTag = document.activeElement.tagName.toLowerCase();
                 if (activeTag !== 'input' && activeTag !== 'textarea' && !activeTag.isContentEditable) {
+                    if (currentView === 'bookmarks' && previewSelectedBookmarkId) {
+                        e.preventDefault();
+                        const targetItem = bookmarks.find(b => b.id === previewSelectedBookmarkId);
+                        if (targetItem) {
+                            openBookmarkPreviewModal(targetItem.url, targetItem.title);
+                        }
+                        return;
+                    }
+
                     if (selectedStickerElement) {
                         const img = selectedStickerElement.querySelector('img');
                         if (img) {
@@ -2661,6 +2674,61 @@
                 if (currentView === 'bookmarks') openBookmarkModal();
             }
         });
+
+        function openBookmarkPreviewModal(url, title) {
+            document.getElementById('previewModalTitleText').innerText = title;
+            const iframe = document.getElementById('previewModalIframe');
+            const safeguardBox = document.getElementById('previewSafeguardBox');
+            const safeguardUrl = document.getElementById('previewSafeguardUrl');
+            const externalLinkBtn = document.getElementById('previewExternalLinkBtn');
+
+            safeguardUrl.innerText = url;
+            externalLinkBtn.href = url;
+            safeguardBox.style.display = 'none';
+            iframe.style.display = 'block';
+
+            iframe.src = url;
+
+            // 检测 iframe 是否被网站的安全策略拒绝加载
+            let loadTimer = setTimeout(() => {
+                try {
+                    // 如果跨域无法访问 iframe 内容或长时间白屏，安全引导显示
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (!iframeDoc || iframeDoc.body.childElementCount === 0) {
+                        iframe.style.display = 'none';
+                        safeguardBox.style.display = 'flex';
+                    }
+                } catch (err) {
+                    // 跨域受阻通常也属于正常嵌入被拒，直接显示跳转保障
+                    iframe.style.display = 'none';
+                    safeguardBox.style.display = 'flex';
+                }
+            }, 1200);
+
+            iframe.onload = function() {
+                clearTimeout(loadTimer);
+            };
+
+            document.getElementById('bookmarkPreviewModal').style.display = 'flex';
+        }
+
+        function closeBookmarkPreviewModal(e) {
+            if (e.target.id === 'bookmarkPreviewModal') {
+                closeBookmarkPreviewModalDirect();
+            }
+        }
+
+        function closeBookmarkPreviewModalDirect() {
+            document.getElementById('bookmarkPreviewModal').style.display = 'none';
+            document.getElementById('previewModalIframe').src = 'about:blank';
+        }
+
+        function selectBookmarkItemForPreview(id, element, event) {
+            if (event) event.stopPropagation();
+            document.querySelectorAll('.bookmark-item').forEach(el => el.classList.remove('preview-selected'));
+            element.classList.add('preview-selected');
+            previewSelectedBookmarkId = id;
+        }
 
         function openImagePreview(src) {
             const modal = document.getElementById('imagePreviewModal');
@@ -2905,7 +2973,7 @@
             items.forEach(item => {
                 const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
                 html += `
-                    <div class="bookmark-item">
+                    <div class="bookmark-item" onclick="selectBookmarkItemForPreview(${item.id}, this, event)" ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
                         <div class="bookmark-content-box">
                             <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
                             ${noteHtml}
@@ -3051,11 +3119,10 @@
                     items.forEach(item => {
                         const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
                         
-                        /* 为每个网址项（bookmark-item）增加悬浮预览（hover preview）事件 */
                         cardHtml += `
                             <div class="bookmark-item" 
-                                 onmouseenter="showBookmarkPreview(this, '${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')" 
-                                 onmouseleave="hideBookmarkPreview(this)">
+                                 onclick="selectBookmarkItemForPreview(${item.id}, this, event)" 
+                                 ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
                                 <div class="bookmark-content-box">
                                     <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
                                     ${noteHtml}
@@ -3086,49 +3153,6 @@
             });
 
             updateSidebar();
-        }
-
-        /* 悬浮预览核心函数：鼠标移入时生成精美小浮窗加载网页 */
-        function showBookmarkPreview(itemEl, url, title) {
-            // 防止重复生成
-            if (itemEl.querySelector('.bookmark-preview-popover')) return;
-
-            const popover = document.createElement('div');
-            popover.className = 'bookmark-preview-popover';
-            popover.style.display = 'flex';
-
-            popover.innerHTML = `
-                <div class="bookmark-preview-header">
-                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; margin-right:6px;">🌐 ${title}</span>
-                    <span style="font-size:10px; color:#a34848; opacity:0.8;">预览中</span>
-                </div>
-                <div class="bookmark-preview-body">
-                    <iframe src="${url}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
-                    <div class="preview-fallback-tips" id="previewFallback">
-                        <span>🔗 目标网址：${url}</span>
-                        <span style="font-size: 11px; opacity:0.8;">(部分网站由于防嵌入安全策略无法在内联 iframe 中显示，可直接点击访问)</span>
-                    </div>
-                </div>
-            `;
-
-            itemEl.appendChild(popover);
-
-            // 1.5 秒后若 iframe 未加载或跨域，隐藏提示
-            const iframe = popover.querySelector('iframe');
-            iframe.onload = function() {
-                try {
-                    const fallback = popover.querySelector('#previewFallback');
-                    if(fallback) fallback.style.display = 'none';
-                } catch(e) {}
-            };
-        }
-
-        /* 鼠标移出时立即移除浮窗，退出预览状态 */
-        function hideBookmarkPreview(itemEl) {
-            const popover = itemEl.querySelector('.bookmark-preview-popover');
-            if (popover) {
-                popover.remove();
-            }
         }
 
         function deleteBookmark(id, event) {
