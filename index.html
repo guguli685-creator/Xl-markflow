@@ -84,6 +84,11 @@
         .add-card-btn-header { background: #f0ded6; color: #8c4343; }
         .add-btn-header { background: #f4d6cc; color: #a34848; font-size: 18px; font-weight: bold; }
         .layout-btn-header { background: #fffbf8; color: #b56565; }
+        .layout-btn-header svg {
+            display: block;
+            stroke: currentColor;
+            pointer-events: none;
+        }
         .mobile-menu-toggle { background: #f4d6cc; color: #a34848; font-size: 16px; border: 2px solid #ecd5cc; }
         
         .header-action-btn:hover, .mobile-menu-toggle:hover { background: #e2ab9d; color: #fff; transform: scale(1.05); }
@@ -1406,7 +1411,7 @@
             <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
             <button class="header-action-btn add-card-btn-header" onclick="openCardModal()" title="新建卡片">📁</button>
             <button class="header-action-btn add-btn-header" onclick="openBookmarkModal()" title="添加新书签">+</button>
-            <button class="header-action-btn layout-btn-header" id="mobileLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式">▤</button>
+            <button class="header-action-btn layout-btn-header" id="mobileLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式"></button>
             <button class="header-action-btn mobile-menu-toggle" onclick="toggleMobileSidebar()" title="打开菜单">❤️</button>
         </div>
     </div>
@@ -1453,7 +1458,7 @@
                 <button class="header-action-btn sync-btn-header" onclick="openGithubAuthModal()" title="同步仓库">☁️</button>
                 <button class="header-action-btn add-card-btn-header" id="headerActionBtn" onclick="openCardModal()" title="新建卡片">📁</button>
                 <button class="header-action-btn add-btn-header" id="headerAddBtn" onclick="openBookmarkModal()" title="添加新书签">+</button>
-                <button class="header-action-btn layout-btn-header" id="desktopLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式（网格 / 紧凑 / 列表）">▤</button>
+                <button class="header-action-btn layout-btn-header" id="desktopLayoutBtn" onclick="cycleLayoutMode()" title="切换布局模式"></button>
             </div>
         </div>
         
@@ -1717,14 +1722,30 @@
         
         let previewSelectedBookmarkId = null;
 
+        const layoutModesConfig = [
+            { 
+                mode: 'grid', 
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>`, 
+                label: '网格视图 (Grid)' 
+            },
+            { 
+                mode: 'compact', 
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="18" rx="1.5"></rect></svg>`, 
+                label: '紧凑双列 (Compact)' 
+            },
+            { 
+                mode: 'list', 
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`, 
+                label: '大卡片流 (List)' 
+            }
+        ];
+
         window.addEventListener('DOMContentLoaded', async () => {
-            // 1. 优先加载本地已有数据，保证首屏秒开
             applyLayoutModeClass();
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
 
-            // 2. 检查本地绑定凭证，若存在则无感自动同步云端最新数据
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
 
@@ -1732,7 +1753,6 @@
                 try {
                     let hasUpdate = false;
 
-                    // 同步书签与分类 (data.fow)
                     const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -1754,7 +1774,6 @@
                         hasUpdate = true;
                     }
 
-                    // 同步手帐笔记 (notes.bj)
                     const bjRes = await fetch(`https://api.github.com/repos/${repo}/contents/notes.bj`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -1779,12 +1798,6 @@
             }
         });
 
-        const layoutModesConfig = [
-            { mode: 'grid', icon: '▤', label: '网格视图 (Grid)' },
-            { mode: 'compact', icon: '▦', label: '紧凑双列 (Compact)' },
-            { mode: 'list', icon: '☰', label: '大卡片流 (List)' }
-        ];
-
         function applyLayoutModeClass() {
             const container = document.getElementById('bookmarkContainer');
             container.className = `layout-${layoutMode}`;
@@ -1794,11 +1807,11 @@
             const btnMobile = document.getElementById('mobileLayoutBtn');
             
             if (btnDesktop) {
-                btnDesktop.innerText = currentConf.icon;
+                btnDesktop.innerHTML = currentConf.icon;
                 btnDesktop.title = `当前：${currentConf.label}（点击切换下一个布局）`;
             }
             if (btnMobile) {
-                btnMobile.innerText = currentConf.icon;
+                btnMobile.innerHTML = currentConf.icon;
                 btnMobile.title = `当前：${currentConf.label}`;
             }
         }
