@@ -756,7 +756,6 @@
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
         
-        /* 选中态：粉色高亮 */
         .bookmark-item.preview-selected {
             background: #f4d6cc !important;
             border-color: #d48383 !important;
@@ -785,7 +784,6 @@
         }
         .empty-card-tip { text-align: center; color: #b5a49c; font-size: 13px; padding: 12px 0; font-style: italic; }
 
-        /* 优化后的网页预览弹窗：兼容 iframe 无法加载时的安全备用展示 */
         .bookmark-preview-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(92, 75, 67, 0.45);
@@ -1191,6 +1189,7 @@
             opacity: 1;
         }
 
+        /* 完美契合手帐主题的小眼睛密码输入框封装 */
         .token-input-wrapper {
             position: relative;
             width: 100%;
@@ -1198,25 +1197,38 @@
             align-items: center;
         }
         .token-input-wrapper input {
-            padding-right: 40px !important;
-            -webkit-text-security: disc;
+            width: 100%;
+            box-sizing: border-box;
+            background: #fff;
+            border: 2px solid #ecd5cc;
+            color: #5c4b43;
+            padding: 12px 45px 12px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
         }
-        .token-input-wrapper input.show-plain {
-            -webkit-text-security: none !important;
+        .token-input-wrapper input:focus {
+            border-color: #d48383;
         }
         .token-eye-btn {
             position: absolute;
             right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             background: none;
             border: none;
-            font-size: 16px;
             cursor: pointer;
-            user-select: none;
-            opacity: 0.7;
-            transition: opacity 0.2s;
+            color: #b5a49c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            transition: color 0.2s, transform 0.2s;
         }
         .token-eye-btn:hover {
-            opacity: 1;
+            color: #d48383;
+            transform: translateY(-50%) scale(1.1);
         }
 
         .modal-overlay {
@@ -1552,7 +1564,7 @@
         </div>
     </div>
 
-    <!-- 网页预览弹窗（双重保障：若被网站拒绝嵌入，则提供缩略图或直接跳转按钮） -->
+    <!-- 网页预览弹窗 -->
     <div class="bookmark-preview-modal-overlay" id="bookmarkPreviewModal" onclick="closeBookmarkPreviewModal(event)">
         <div class="bookmark-preview-modal-box">
             <div class="bookmark-preview-modal-header">
@@ -1594,22 +1606,28 @@
         <img id="previewModalImg" alt="大图预览">
     </div>
 
-    <div class="toast-tip" id="toastTip">已存至仓库</div>
+    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 操作已记录</div>
 
+    <!-- GitHub 绑定弹窗 (带有手帐主题小眼睛按钮) -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
-            <h3>☁️ 绑定您的 GitHub 私有仓库</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入您的 Personal Access Token (需 repo 权限)，系统将自动加载您的私有/公开仓库供您选择。</p>
+            <h3>☁️ 绑定您的私有仓库</h3>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入您的 Personal Access Token </p>
             
             <div class="token-input-wrapper">
-                <input type="text" id="ghTokenInput" placeholder="粘贴您的 Token (ghp_...)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
-                <button type="button" class="token-eye-btn" onclick="toggleTokenVisibility()" title="显示/隐藏 Token">👁️</button>
+                <input type="password" id="ghTokenInput" placeholder="粘贴您的 Token…" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
+                <button type="button" class="token-eye-btn" onclick="toggleTokenVisibility()">
+                    <svg id="eye-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </button>
             </div>
 
-            <button class="modal-btn confirm" style="width: 100%;" onclick="fetchUserRepositories()">加载我的仓库列表</button>
+            <button class="modal-btn confirm" style="width: 100%; margin-top: 4px;" onclick="fetchUserRepositories()">加载我的仓库</button>
             
             <div id="repoSelectBox" style="display:none; flex-direction:column; gap:8px;">
-                <div class="category-selector-label">选择用于保存数据的专属仓库：</div>
+                <div class="category-selector-label">选择保存数据的仓库：</div>
                 <select id="userRepoSelect"></select>
                 <button class="modal-btn confirm" style="width: 100%;" onclick="confirmRepoBinding()">确认绑定仓库</button>
             </div>
@@ -1790,7 +1808,7 @@
                     if (hasUpdate) {
                         renderCustomStickers();
                         switchView(currentView, currentCategory, null);
-                        showToast("☁️ 已同步数据");
+                        showToast("☁️ 已自动同步最新云端数据");
                     }
                 } catch (error) {
                     console.error("自动同步失败:", error);
@@ -1873,14 +1891,14 @@
         }
 
         function generateBookmarksHtmlString() {
-            let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
+            let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META CONTENT="text/html; charset=UTF-8" HTTP-EQUIV="Content-Type">\n<TITLE>MarkFlow Bookmarks Backup</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`;
             const cats = getAllCategories();
             cats.forEach(cat => {
                 htmlContent += `    <DT><H3>${cat}</H3>\n    <DL><p>\n`;
                 const items = bookmarks.filter(b => b.group === cat);
                 items.forEach(item => {
                     const noteAttr = item.note ? ` NOTE="${item.note.replace(/"/g, '&quot;')}"` : '';
-                    htmlContent += `        <DT><A HREF="${item.url}"${noteAttr}>${item.title}</A></DT>\n`;
+                    htmlContent += `        <DT><A ${noteAttr} HREF="${item.url}">${item.title}</A></DT>\n`;
                 });
                 htmlContent += `    </DL><p>\n`;
             });
@@ -1973,15 +1991,19 @@
             }
         }
 
+        /* 切换 Token 可见性并匹配手帐主题 SVG 图标 */
         function toggleTokenVisibility() {
             const input = document.getElementById('ghTokenInput');
-            const btn = document.querySelector('.token-eye-btn');
-            if (input.classList.contains('show-plain')) {
-                input.classList.remove('show-plain');
-                btn.innerText = '👁️';
+            const icon = document.getElementById('eye-icon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                // 睁眼/可见态图标
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>'; 
             } else {
-                input.classList.add('show-plain');
-                btn.innerText = '🐵';
+                input.type = 'password';
+                // 闭眼/默认态图标
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
         }
 
@@ -2016,7 +2038,7 @@
 
                 verifiedTokenTemp = token;
                 document.getElementById('repoSelectBox').style.display = 'flex';
-                alert('✨ 验证成功！请在下方选择目标仓库');
+                alert('✨ 验证成功！请您选择仓库');
             } catch(e) {
                 alert('网络异常或请求失败');
             }
@@ -2705,7 +2727,6 @@
             };
         }
 
-        /* 快捷键监听：当某个网址条目处于选中（高亮）状态时，按下空格键弹出带 fallback 的预览弹窗 */
         window.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.code === 'Space') {
                 const activeTag = document.activeElement.tagName.toLowerCase();
@@ -2757,17 +2778,14 @@
 
             iframe.src = url;
 
-            // 检测 iframe 是否被网站的安全策略拒绝加载
             let loadTimer = setTimeout(() => {
                 try {
-                    // 如果跨域无法访问 iframe 内容或长时间白屏，安全引导显示
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     if (!iframeDoc || iframeDoc.body.childElementCount === 0) {
                         iframe.style.display = 'none';
                         safeguardBox.style.display = 'flex';
                     }
                 } catch (err) {
-                    // 跨域受阻通常也属于正常嵌入被拒，直接显示跳转保障
                     iframe.style.display = 'none';
                     safeguardBox.style.display = 'flex';
                 }
