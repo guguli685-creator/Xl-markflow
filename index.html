@@ -1189,7 +1189,7 @@
             opacity: 1;
         }
 
-        /* 完美契合手帐主题的小眼睛密码输入框封装 */
+        /* 完美契合手帐主题的小眼睛密码输入框封装（已修复文字遮挡及图层置顶问题） */
         .token-input-wrapper {
             position: relative;
             width: 100%;
@@ -1224,6 +1224,7 @@
             align-items: center;
             justify-content: center;
             padding: 4px;
+            z-index: 10; /* 确保小眼睛图标永远置顶 */
             transition: color 0.2s, transform 0.2s;
         }
         .token-eye-btn:hover {
@@ -1608,7 +1609,7 @@
 
     <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 操作已记录</div>
 
-    <!-- GitHub 绑定弹窗 (带有手帐主题小眼睛按钮) -->
+    <!-- GitHub 绑定弹窗 (带有手帐主题小眼睛按钮，已修复重叠与图层置顶问题) -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
             <h3>☁️ 绑定您的私有仓库</h3>
