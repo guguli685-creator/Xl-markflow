@@ -1607,7 +1607,7 @@
         <img id="previewModalImg" alt="大图预览">
     </div>
 
-    <div class="toast-tip" id="toastTip">ฅ ^•ﻌ•^ฅ 操作已记录</div>
+    <div class="toast-tip" id="toastTip">记录成功</div>
 
     <!-- GitHub 绑定弹窗 (带有手帐主题小眼睛按钮，已修复重叠与图层置顶问题) -->
     <div class="modal-overlay" id="githubAuthModal">
@@ -1809,7 +1809,7 @@
                     if (hasUpdate) {
                         renderCustomStickers();
                         switchView(currentView, currentCategory, null);
-                        showToast("☁️ 已自动同步最新云端数据");
+                        showToast("☁️ 已同步到云端");
                     }
                 } catch (error) {
                     console.error("自动同步失败:", error);
@@ -2987,7 +2987,7 @@
         function showToast(msg) {
             const toast = document.getElementById('toastTip');
             if (msg) toast.innerText = msg;
-            else toast.innerText = 'ฅ ^•ﻌ•^ฅ 操作已记录';
+            else toast.innerText = '同步成功';
             
             toast.classList.add('show');
             setTimeout(() => {
