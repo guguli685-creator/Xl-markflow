@@ -530,7 +530,7 @@
 
         .frequent-search-bar {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
             margin-bottom: 20px;
             flex-wrap: wrap;
@@ -554,6 +554,18 @@
             flex-wrap: wrap;
             flex: 1;
             align-items: center;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        .frequent-tags-wrapper.collapsed {
+            max-height: 72px; /* 约限制为两行高度 */
+        }
+        .frequent-actions-wrapper {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            flex-shrink: 0;
+            margin-left: auto;
         }
         .frequent-tag-pill {
             background: #fffbf8;
@@ -600,6 +612,26 @@
         .add-frequent-tag-btn:hover {
             background: #e2ab9d;
             color: #fff;
+        }
+        .toggle-frequent-tags-btn {
+            background: #fffbf8;
+            border: 1px solid #ecd5cc;
+            color: #8c7368;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .toggle-frequent-tags-btn:hover {
+            background: #faede6;
+            color: #b56565;
+            border-color: #d48383;
         }
 
         .search-section-panel {
@@ -1372,20 +1404,21 @@
                 font-size: 12px;
             }
             .frequent-search-bar {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr);
+                display: flex;
+                flex-direction: column;
                 gap: 10px;
                 padding: 10px 12px;
             }
             .frequent-tags-wrapper {
                 width: 100%;
                 min-width: 0;
-                flex: none;
                 gap: 8px;
                 align-items: flex-start;
             }
-            .add-frequent-tag-btn {
-                justify-self: end;
+            .frequent-actions-wrapper {
+                width: 100%;
+                justify-content: flex-end;
+                margin-left: 0;
             }
             .search-result-item {
                 flex-direction: column;
@@ -1496,7 +1529,10 @@
             <div class="frequent-search-bar">
                 <div class="frequent-title-label">📌 自定义标签：</div>
                 <div class="frequent-tags-wrapper" id="frequentTagsWrapper"></div>
-                <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库中的 tags.json 文件">+ 存为标签</button>
+                <div class="frequent-actions-wrapper">
+                    <button class="add-frequent-tag-btn" onclick="addCurrentAsFrequentTag()" title="只有点击我，才会保存标签并更新私有仓库中的 tags.json 文件">+ 存为标签</button>
+                    <button class="toggle-frequent-tags-btn" id="toggleTagsBtn" onclick="toggleFrequentTagsCollapse()" title="收起/展开所有标签">展开 ⌵</button>
+                </div>
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
@@ -1680,7 +1716,7 @@
     <div class="modal-overlay" id="cardModal">
         <div class="modal">
             <h3>📁 新建空白卡片分类</h3>
-            <input type="text" id="newCardGroupName" placeholder="输入新卡片分类名称（例如：宝藏网站）" autocomplete="off" onkeydown="if(event.key==='Enter') saveNewCardGroup()">
+            <input type="text" id="newCardGroupNameName" placeholder="输入新卡片分类名称（例如：宝藏网站）" autocomplete="off" onkeydown="if(event.key==='Enter') saveNewCardGroup()">
             <div class="modal-buttons">
                 <button class="modal-btn cancel" onclick="closeModal()">取消</button>
                 <button class="modal-btn confirm" onclick="saveNewCardGroup()">创建卡片</button>
@@ -1712,6 +1748,7 @@
 
     <script>
         let frequentSearchTags = [];
+        let tagsCollapsed = localStorage.getItem('markflow_tagsCollapsed') === 'true';
 
         let categories = JSON.parse(localStorage.getItem('markflow_categories')) || [];
         let bookmarks = JSON.parse(localStorage.getItem('markflow_bookmarks')) || [];
@@ -1999,11 +2036,9 @@
             
             if (input.type === 'password') {
                 input.type = 'text';
-                // 睁眼/可见态图标
                 icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>'; 
             } else {
                 input.type = 'password';
-                // 闭眼/默认态图标
                 icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
         }
@@ -2286,12 +2321,42 @@
             document.getElementById('searchInput').value = '';
         }
 
+        function toggleFrequentTagsCollapse() {
+            tagsCollapsed = !tagsCollapsed;
+            localStorage.setItem('markflow_tagsCollapsed', tagsCollapsed);
+            updateTagsCollapseView();
+        }
+
+        function updateTagsCollapseView() {
+            const wrapper = document.getElementById('frequentTagsWrapper');
+            const btn = document.getElementById('toggleTagsBtn');
+            if (!wrapper || !btn) return;
+
+            if (frequentSearchTags.length <= 4) {
+                btn.style.display = 'none';
+                wrapper.classList.remove('collapsed');
+                return;
+            }
+
+            btn.style.display = 'inline-flex';
+            if (tagsCollapsed) {
+                wrapper.classList.add('collapsed');
+                btn.innerHTML = `展开 ⌵`;
+                btn.title = `点击展开所有标签`;
+            } else {
+                wrapper.classList.remove('collapsed');
+                btn.innerHTML = `收起 ⌃`;
+                btn.title = `点击收起部分标签`;
+            }
+        }
+
         function renderFrequentSearchTags() {
             const wrapper = document.getElementById('frequentTagsWrapper');
             if (!wrapper) return;
             
             if (frequentSearchTags.length === 0) {
                 wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无标签，输入关键词后点击“存为标签”添加</span>`;
+                updateTagsCollapseView();
                 return;
             }
             let html = '';
@@ -2304,6 +2369,7 @@
                 `;
             });
             wrapper.innerHTML = html;
+            updateTagsCollapseView();
         }
 
         function clickFrequentTag(tag) {
@@ -3264,8 +3330,8 @@
 
         function openCardModal() {
             document.getElementById('cardModal').style.display = 'flex';
-            document.getElementById('newCardGroupName').value = '';
-            setTimeout(() => document.getElementById('newCardGroupName').focus(), 50);
+            document.getElementById('newCardGroupNameName').value = '';
+            setTimeout(() => document.getElementById('newCardGroupNameName').focus(), 50);
         }
 
         function openEditCardModal(groupName, event) {
@@ -3435,7 +3501,7 @@
         }
 
         function saveNewCardGroup() {
-            const groupName = document.getElementById('newCardGroupName').value.trim();
+            const groupName = document.getElementById('newCardGroupNameName').value.trim();
             if (!groupName) {
                 alert('请输入卡片分类名称哦~');
                 return;
