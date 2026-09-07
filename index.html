@@ -558,7 +558,7 @@
             overflow: hidden;
         }
         .frequent-tags-wrapper.collapsed {
-            max-height: 72px; /* 约限制为两行高度 */
+            max-height: 72px;
         }
         .frequent-actions-wrapper {
             display: inline-flex;
@@ -675,14 +675,56 @@
             transition: all 0.2s;
             box-shadow: 0 2px 8px rgba(210, 185, 170, 0.08);
             gap: 12px;
+            cursor: pointer;
         }
         .search-result-item:hover {
             background: #faede6;
             border-color: #d48383;
         }
-        .search-result-title { font-weight: 600; color: #b56565; font-size: 14px; margin-bottom: 4px; line-height: 1.4; word-break: break-all; }
-        .search-result-url { font-size: 12px; color: #b5a49c; word-break: break-all; line-height: 1.4; }
-        .search-result-badge { font-size: 12px; background: #faede6; color: #d48383; padding: 4px 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+        .search-result-title { 
+            font-weight: 600; 
+            color: #b56565; 
+            font-size: 14px; 
+            margin-bottom: 4px; 
+            line-height: 1.4; 
+            word-break: break-all; 
+        }
+        .search-result-title a {
+            color: #b56565;
+            text-decoration: none;
+        }
+        .search-result-title a:hover {
+            text-decoration: underline;
+        }
+        .search-result-url { 
+            font-size: 12px; 
+            color: #b5a49c; 
+            word-break: break-all; 
+            line-height: 1.4; 
+        }
+        .search-result-url a {
+            color: #b5a49c;
+            text-decoration: none;
+        }
+        .search-result-url a:hover {
+            color: #a34848;
+            text-decoration: underline;
+        }
+        .search-result-badge { 
+            font-size: 12px; 
+            background: #faede6; 
+            color: #d48383; 
+            padding: 4px 8px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            white-space: nowrap; 
+            flex-shrink: 0; 
+            transition: background 0.2s;
+        }
+        .search-result-badge:hover {
+            background: #f4d6cc;
+            color: #a34848;
+        }
 
         .content-canvas {
             flex: 1;
@@ -1221,7 +1263,6 @@
             opacity: 1;
         }
 
-        /* 完美契合手帐主题的小眼睛密码输入框封装（已修复文字遮挡及图层置顶问题） */
         .token-input-wrapper {
             position: relative;
             width: 100%;
@@ -1256,7 +1297,7 @@
             align-items: center;
             justify-content: center;
             padding: 4px;
-            z-index: 10; /* 确保小眼睛图标永远置顶 */
+            z-index: 10;
             transition: color 0.2s, transform 0.2s;
         }
         .token-eye-btn:hover {
@@ -1536,7 +1577,7 @@
             </div>
 
             <div class="search-section-panel active" id="panelBookmark">
-                <div class="section-title">📌 检索结果（点击直接访问）</div>
+                <div class="section-title">📌 检索结果（点击卡片查看大文件夹，点击网址直接访问）</div>
                 <div class="search-results-list" id="searchResultsList"></div>
             </div>
 
@@ -1645,7 +1686,7 @@
 
     <div class="toast-tip" id="toastTip">记录成功</div>
 
-    <!-- GitHub 绑定弹窗 (带有手帐主题小眼睛按钮，已修复重叠与图层置顶问题) -->
+    <!-- GitHub 绑定弹窗 -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
             <h3>☁️ 绑定您的私有仓库</h3>
@@ -2029,7 +2070,6 @@
             }
         }
 
-        /* 切换 Token 可见性并匹配手帐主题 SVG 图标 */
         function toggleTokenVisibility() {
             const input = document.getElementById('ghTokenInput');
             const icon = document.getElementById('eye-icon');
@@ -2451,18 +2491,28 @@
             }
 
             filtered.forEach(item => {
+                const safeGroup = item.group.replace(/'/g, "\\'");
                 const noteHtml = item.note ? `<div class="search-result-url" style="color: #8c7368;">📝 备注: ${item.note}</div>` : '';
+                
                 listContainer.innerHTML += `
-                    <a href="${item.url}" class="search-result-item" target="_blank">
+                    <div class="search-result-item" onclick="openFolderModalFromSearch('${safeGroup}')" title="点击查看【${item.group}】大文件夹全部网址">
                         <div style="flex: 1; overflow: hidden; width: 100%;">
-                            <div class="search-result-title">${item.title}</div>
-                            <div class="search-result-url">🔗 ${item.url}</div>
+                            <div class="search-result-title">
+                                <a href="${item.url}" target="_blank" onclick="event.stopPropagation()">${item.title}</a>
+                            </div>
+                            <div class="search-result-url">
+                                🔗 <a href="${item.url}" target="_blank" onclick="event.stopPropagation()">${item.url}</a>
+                            </div>
                             ${noteHtml}
                         </div>
-                        <span class="search-result-badge">📁 ${item.group} ↗</span>
-                    </a>
+                        <span class="search-result-badge" onclick="event.stopPropagation(); openFolderModalFromSearch('${safeGroup}');" title="点击查看该分类全部网址">📁 ${item.group} ↗</span>
+                    </div>
                 `;
             });
+        }
+
+        function openFolderModalFromSearch(groupName) {
+            openFolderModal(groupName);
         }
 
         function renderNotesSearchResults(keyword) {
