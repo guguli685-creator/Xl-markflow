@@ -377,6 +377,15 @@
             background: #e2ab9d;
             color: #fff;
         }
+        .sidebar-action-btn.visitor-btn {
+            background: #e1f5fe;
+            color: #0288d1;
+            border-color: #b3e5fc;
+        }
+        .sidebar-action-btn.visitor-btn:hover {
+            background: #b3e5fc;
+            color: #01579b;
+        }
 
         .main-content {
             flex: 1;
@@ -1642,6 +1651,10 @@
         <div id="menuList"></div>
 
         <div class="sidebar-bottom-actions">
+            <!-- 访客免Token密码同步按钮 -->
+            <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客凭密码免Token同步">
+                🔑 <span>访客密码同步</span>
+            </button>
             <!-- 控制面板菜单按钮（点击打开弹窗，自动检测私有仓库登录状态） -->
             <button class="sidebar-action-btn" onclick="openControlPanelModal()" title="控制面板">
                 🌐 <span>控制面板</span>
@@ -1765,6 +1778,30 @@
                     <span id="wordCountText">字数: 0 字</span>
                     <span id="lineCountText">行数: 0 行</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 访客免Token密码同步弹窗 -->
+    <div class="modal-overlay" id="visitorAuthModal">
+        <div class="modal">
+            <h3>🔑 访客密码免Token同步</h3>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">无需登录 Token，输入公开仓库名与 8 位访问密码即可直接同步书签与笔记！</p>
+            
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label class="category-selector-label">公开仓库名 (例如: 用户名/仓库名-public)：</label>
+                <input type="text" id="visitorRepoInput" placeholder="例如: guguli685-creator/Xl-markflow-public" autocomplete="off">
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label class="category-selector-label">8位访问密码 (Key)：</label>
+                <input type="password" id="visitorKeyInput" placeholder="输入8位随机密码..." autocomplete="off">
+            </div>
+
+            <button class="modal-btn confirm" style="width: 100%; margin-top: 4px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步公开数据</button>
+            
+            <div class="modal-buttons" style="margin-top: 5px;">
+                <button class="modal-btn cancel" onclick="closeVisitorAuthModal()">取消</button>
             </div>
         </div>
     </div>
@@ -2245,6 +2282,70 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
+        // 访客免Token密码同步弹窗控制
+        function openVisitorAuthModal() {
+            document.getElementById('visitorAuthModal').style.display = 'flex';
+            document.getElementById('visitorRepoInput').value = localStorage.getItem('gh_public_repo') || '';
+            document.getElementById('visitorKeyInput').value = '';
+        }
+        function closeVisitorAuthModal() {
+            document.getElementById('visitorAuthModal').style.display = 'none';
+        }
+
+        async function confirmVisitorSync() {
+            const publicRepo = document.getElementById('visitorRepoInput').value.trim();
+            const enteredKey = document.getElementById('visitorKeyInput').value.trim();
+
+            if (!publicRepo || !enteredKey) {
+                alert('请填写公开仓库名以及 8 位访问密码！');
+                return;
+            }
+
+            try {
+                // 通过 GitHub API 的公开读取接口获取 Stockage 文件内容（无需 Token）
+                const res = await fetch(`https://api.github.com/repos/${publicRepo}/contents/Stockage`);
+                if (!res.ok) {
+                    throw new Error('无法连接到公开仓库或未找到 Stockage 文件，请检查仓库名是否正确。');
+                }
+
+                const fileData = await res.json();
+                const jsonContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+
+                if (!jsonContent.pubKey || jsonContent.pubKey !== enteredKey) {
+                    alert('❌ 访问密码错误，无法同步！');
+                    return;
+                }
+
+                // 校验通过，开始恢复数据
+                if (jsonContent.categories) {
+                    categories = jsonContent.categories;
+                    localStorage.setItem('markflow_categories', JSON.stringify(categories));
+                }
+                if (jsonContent.bookmarks) {
+                    bookmarks = jsonContent.bookmarks;
+                    localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
+                }
+                if (jsonContent.notesList) {
+                    notesList = jsonContent.notesList;
+                    localStorage.setItem('markflow_notesList', JSON.stringify(notesList));
+                }
+                if (jsonContent.customStickers) {
+                    customStickers = jsonContent.customStickers;
+                    localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
+                }
+
+                localStorage.setItem('gh_public_repo', publicRepo);
+                localStorage.setItem('markflow_pub_key', enteredKey);
+
+                closeVisitorAuthModal();
+                alert('✨ 访客密码验证成功！云端书签与笔记已成功同步。');
+                window.location.reload(true);
+            } catch (err) {
+                console.error(err);
+                alert(`同步失败: ${err.message}`);
+            }
+        }
+
         async function fetchUserRepositories() {
             const token = document.getElementById('ghTokenInput').value.trim();
             if (!token) { alert('请输入 Token'); return; }
@@ -2336,7 +2437,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || '',
+                pubKey: localStorage.getItem('markflow_pub_key'] || '',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -3277,7 +3378,6 @@
                 badge.innerText = '提交中...';
 
                 if (isPublic) {
-                    // 1. 自动检测公开仓库是否存在，若不存在则尝试通过 API 自动创建
                     const checkRepoRes = await fetch(`https://api.github.com/repos/${publicRepo}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -3300,7 +3400,6 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    // 2. 自动生成 8 位随机密码：数字、英文、罗马符号
                     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ";
                     let randomKey = "";
                     for (let i = 0; i < 8; i++) {
@@ -3310,10 +3409,8 @@
                     document.getElementById('publicRandomKeyInput').value = randomKey;
                     localStorage.setItem('markflow_pub_key', randomKey);
 
-                    // 3. 同步 Key 和数据到私有仓库
                     await manualSyncBackupQuietly();
 
-                    // 4. 将所有数据同步到公开仓库的 Stockage 文件中
                     const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -3350,7 +3447,6 @@
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
-                    // 销毁逻辑：清空公开仓库目录下的 Stockage 文件
                     const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
