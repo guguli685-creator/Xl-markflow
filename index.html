@@ -1794,7 +1794,7 @@
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员生成的 **访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员生成的 **访问密码 (Key)** 即可免登录拉取同步云端书签、笔记与标签！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
@@ -1816,7 +1816,7 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">点击同步将自动生成随机访问密码，长期有效无时效限制</p>
+            <p class="panel-desc">点击同步将自动将书签、笔记及标签打包同步，长期有效无时效限制</p>
 
             <div class="input-row">
                 <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
@@ -2343,12 +2343,16 @@
                     customStickers = jsonContent.customStickers;
                     localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
                 }
+                if (jsonContent.frequentSearchTags && Array.isArray(jsonContent.frequentSearchTags)) {
+                    frequentSearchTags = jsonContent.frequentSearchTags;
+                    await updateTagsJsonInRepo(frequentSearchTags);
+                }
 
                 localStorage.setItem('gh_public_repo', FIXED_PUBLIC_REPO);
                 localStorage.setItem('markflow_pub_key', enteredKey);
 
                 closeVisitorAuthModalDirect();
-                alert('✨ 密码验证成功！云端书签与笔记已成功同步。');
+                alert('✨ 密码验证成功！云端书签、笔记与标签已成功同步。');
                 window.location.reload(true);
             } catch (err) {
                 console.error(err);
@@ -3420,6 +3424,7 @@
                         bookmarks,
                         notesList,
                         customStickers,
+                        frequentSearchTags,
                         pubKey: newRandomKey,
                         updatedAt: new Date().toISOString()
                     };
@@ -3429,7 +3434,7 @@
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            message: '🚀 同步全量书签与笔记到公开仓库 Stockage (MarkFlow)',
+                            message: '🚀 同步全量书签、笔记与标签到公开仓库 Stockage (MarkFlow)',
                             content: encodedContent,
                             sha: stockageSha || undefined
                         })
@@ -3439,7 +3444,7 @@
                         badge.innerText = '已公开';
                         badge.style.background = '#e1f5fe';
                         badge.style.color = '#0288d1';
-                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成永久随机访问密码: ${newRandomKey}`);
+                        alert(`✨ 数据与标签已成功同步到公开仓库！\n🔑 访问密码: ${newRandomKey}`);
                         closeControlPanelModal();
                     } else {
                         const errPutJson = await putRes.json();
@@ -3459,6 +3464,7 @@
                             bookmarks: [],
                             notesList: [],
                             customStickers: [],
+                            frequentSearchTags: [],
                             pubKey: "",
                             updatedAt: new Date().toISOString()
                         };
