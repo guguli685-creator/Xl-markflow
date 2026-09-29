@@ -836,6 +836,7 @@
             background: #fffbf8; border: 1.5px solid #faede6;
             transition: all 0.2s;
             cursor: pointer;
+            gap: 10px;
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
         
@@ -845,12 +846,23 @@
             box-shadow: 0 0 0 2px rgba(212, 131, 131, 0.3);
         }
 
+        .bookmark-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            object-fit: contain;
+            flex-shrink: 0;
+            background: #fff;
+            padding: 1px;
+            border: 1px solid #ecd5cc;
+        }
+
         .bookmark-content-box {
             display: flex;
             flex-direction: column;
             overflow: hidden;
             flex: 1;
-            margin-right: 8px;
+            margin-right: 4px;
         }
         .bookmark-link {
             color: #6b564d; text-decoration: none; overflow: hidden;
@@ -920,7 +932,7 @@
             transform: scale(1.02);
         }
 
-        .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+        .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; flex-shrink: 0; }
         .bookmark-item:hover .actions { opacity: 1; }
         .btn { background: #f4d6cc; border: none; color: #8c4343; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
         .btn:hover { background: #e2ab9d; color: #fff; }
@@ -1651,7 +1663,7 @@
         <div id="menuList"></div>
 
         <div class="sidebar-bottom-actions">
-            <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客凭密码免Token同步">
+            <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客密码免Token同步">
                 🔑 <span>访客密码同步</span>
             </button>
             <button class="sidebar-action-btn" onclick="openControlPanelModal()" title="控制面板">
@@ -1815,7 +1827,7 @@
             </div>
 
             <div class="button-group">
-                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (生成新密码)</button>
+                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步</button>
                 <button onclick="publishToPublic(false)" class="btn-danger-ctrl" style="flex: 1;">🔒 销毁</button>
             </div>
         </div>
@@ -2079,6 +2091,21 @@
                 }
             }
         });
+
+        // 辅助函数：安全获取网站 Favicon 缩略图
+        function getFaviconUrl(url) {
+            try {
+                const domain = new URL(url).hostname;
+                return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+            } catch {
+                return '';
+            }
+        }
+
+        // 图片加载失败降级处理
+        function handleFaviconError(imgEl) {
+            imgEl.style.display = 'none';
+        }
 
         function applyLayoutModeClass() {
             const container = document.getElementById('bookmarkContainer');
@@ -3297,7 +3324,7 @@
             updateSidebar();
         }
 
-        // 控制面板弹窗相关逻辑
+        // 控制面板弹窗相关逻辑（修正：管理页面重新加载/销毁时，不销毁整体页面框架，仅清理公开状态并重新拉取私人数据）
         function openControlPanelModal() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -3382,7 +3409,6 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    // 每次点击同步时，生成带有有时效性的全新 8 位随机密码
                     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
                     let newRandomKey = "";
                     for (let i = 0; i < 8; i++) {
@@ -3430,40 +3456,67 @@
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
+                    // 销毁公开数据：不销毁管理页本身，只清除公开书签缓存/公开状态，并重新加载私人仓库数据
                     const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
                     if (getRes.ok) stockageSha = (await getRes.json()).sha;
 
-                    if (!stockageSha) {
-                        alert('公开仓库中未检测到 Stockage 文件。');
-                        badge.innerText = '已就绪';
-                        return;
+                    if (stockageSha) {
+                        await fetch(stockageUrl, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: '🔒 销毁公网公开数据 Stockage',
+                                sha: stockageSha
+                            })
+                        });
                     }
 
-                    const delRes = await fetch(stockageUrl, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: '🔒 销毁公网公开数据 Stockage',
-                            sha: stockageSha
-                        })
-                    });
+                    // 重置公开缓存状态，保留页面框架，重新从私有仓库拉取并加载最新私人数据
+                    localStorage.removeItem('markflow_pub_key');
+                    badge.innerText = '已清除公开状态';
+                    badge.style.background = '#fdf2f2';
+                    badge.style.color = '#c45555';
 
-                    if (delRes.ok) {
-                        badge.innerText = '已销毁';
-                        badge.style.background = '#fdf2f2';
-                        badge.style.color = '#c45555';
-                        alert('🔒 公开数据 Stockage 已成功销毁清除。');
-                        closeControlPanelModal();
-                    } else {
-                        alert('销毁公开数据失败。');
-                    }
+                    alert('🔒 公开书签状态已清除。正在重新加载私有仓库数据...');
+                    closeControlPanelModal();
+                    await manualRestoreFromRepoQuietly();
                 }
             } catch (e) {
                 console.error(e);
                 badge.innerText = '异常';
                 alert(`操作发生异常: ${e.message}`);
+            }
+        }
+
+        async function manualRestoreFromRepoQuietly() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return;
+
+            try {
+                const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (fowRes.ok) {
+                    const fowData = await fowRes.json();
+                    const fowJson = JSON.parse(decodeURIComponent(escape(atob(fowData.content))));
+                    if (fowJson.categories) {
+                        categories = fowJson.categories;
+                        localStorage.setItem('markflow_categories', JSON.stringify(categories));
+                    }
+                    if (fowJson.bookmarks) {
+                        bookmarks = fowJson.bookmarks;
+                        localStorage.setItem('markflow_bookmarks', JSON.stringify(bookmarks));
+                    }
+                    if (fowJson.customStickers) {
+                        customStickers = fowJson.customStickers;
+                        localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
+                    }
+                }
+                renderBookmarks(bookmarks);
+                showToast("✨ 已重新加载私有仓库数据");
+            } catch (err) {
+                console.error("静默重载私有数据失败", err);
             }
         }
 
@@ -3616,8 +3669,12 @@
             let html = '';
             items.forEach(item => {
                 const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
+                const faviconUrl = getFaviconUrl(item.url);
+                const faviconHtml = faviconUrl ? `<img src="${faviconUrl}" class="bookmark-favicon" onerror="handleFaviconError(this)" alt="">` : '';
+
                 html += `
                     <div class="bookmark-item" onclick="selectBookmarkItemForPreview(${item.id}, this, event)" ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
+                        ${faviconHtml}
                         <div class="bookmark-content-box">
                             <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
                             ${noteHtml}
@@ -3762,11 +3819,14 @@
                     cardHtml += `<div class="card-bookmarks-list">`;
                     items.forEach(item => {
                         const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
+                        const faviconUrl = getFaviconUrl(item.url);
+                        const faviconHtml = faviconUrl ? `<img src="${faviconUrl}" class="bookmark-favicon" onerror="handleFaviconError(this)" alt="">` : '';
                         
                         cardHtml += `
                             <div class="bookmark-item" 
                                  onclick="selectBookmarkItemForPreview(${item.id}, this, event)" 
                                  ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
+                                ${faviconHtml}
                                 <div class="bookmark-content-box">
                                     <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
                                     ${noteHtml}
