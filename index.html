@@ -1655,7 +1655,7 @@
             <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客凭密码免Token同步">
                 🔑 <span>访客密码同步</span>
             </button>
-            <!-- 控制面板菜单按钮（点击打开弹窗，自动检测私有仓库登录状态） -->
+            <!-- 控制面板菜单按钮 -->
             <button class="sidebar-action-btn" onclick="openControlPanelModal()" title="控制面板">
                 🌐 <span>控制面板</span>
             </button>
@@ -1783,13 +1783,13 @@
     </div>
 
     <!-- 访客免Token密码同步弹窗 -->
-    <div class="modal-overlay" id="visitorAuthModal">
-        <div class="modal">
+    <div class="modal-overlay" id="visitorAuthModal" onclick="closeVisitorAuthModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
             <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">无需登录 Token，输入公开仓库名与 8 位访问密码即可直接同步书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <label class="category-selector-label">公开仓库名 (例如: 用户名/仓库名-public)：</label>
+                <label class="category-selector-label">公开仓库名 (例如: 用户名/仓库名)：</label>
                 <input type="text" id="visitorRepoInput" placeholder="例如: guguli685-creator/Xl-markflow-public" autocomplete="off">
             </div>
 
@@ -1801,7 +1801,7 @@
             <button class="modal-btn confirm" style="width: 100%; margin-top: 4px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步公开数据</button>
             
             <div class="modal-buttons" style="margin-top: 5px;">
-                <button class="modal-btn cancel" onclick="closeVisitorAuthModal()">取消</button>
+                <button class="modal-btn cancel" onclick="closeVisitorAuthModalDirect()">取消</button>
             </div>
         </div>
     </div>
@@ -2288,7 +2288,12 @@
             document.getElementById('visitorRepoInput').value = localStorage.getItem('gh_public_repo') || '';
             document.getElementById('visitorKeyInput').value = '';
         }
-        function closeVisitorAuthModal() {
+        function closeVisitorAuthModal(e) {
+            if (e.target.id === 'visitorAuthModal') {
+                closeVisitorAuthModalDirect();
+            }
+        }
+        function closeVisitorAuthModalDirect() {
             document.getElementById('visitorAuthModal').style.display = 'none';
         }
 
@@ -2302,7 +2307,6 @@
             }
 
             try {
-                // 通过 GitHub API 的公开读取接口获取 Stockage 文件内容（无需 Token）
                 const res = await fetch(`https://api.github.com/repos/${publicRepo}/contents/Stockage`);
                 if (!res.ok) {
                     throw new Error('无法连接到公开仓库或未找到 Stockage 文件，请检查仓库名是否正确。');
@@ -2316,7 +2320,6 @@
                     return;
                 }
 
-                // 校验通过，开始恢复数据
                 if (jsonContent.categories) {
                     categories = jsonContent.categories;
                     localStorage.setItem('markflow_categories', JSON.stringify(categories));
@@ -2337,7 +2340,7 @@
                 localStorage.setItem('gh_public_repo', publicRepo);
                 localStorage.setItem('markflow_pub_key', enteredKey);
 
-                closeVisitorAuthModal();
+                closeVisitorAuthModalDirect();
                 alert('✨ 访客密码验证成功！云端书签与笔记已成功同步。');
                 window.location.reload(true);
             } catch (err) {
@@ -2437,7 +2440,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key'] || '',
+                pubKey: localStorage.getItem('markflow_pub_key') || '',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -3305,7 +3308,7 @@
             updateSidebar();
         }
 
-        // 控制面板弹窗相关逻辑（自动检测 Token）
+        // 控制面板弹窗相关逻辑
         function openControlPanelModal() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
