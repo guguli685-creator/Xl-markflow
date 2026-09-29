@@ -1542,11 +1542,8 @@
             <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客密码免Token同步">
                 🔑 <span>访客密码同步</span>
             </button>
-            <button class="sidebar-action-btn sync-primary" onclick="quickPublishToPublic()" title="一键静默同步到公网公开仓库">
+            <button class="sidebar-action-btn sync-primary" onclick="openControlPanelModal()" title="控制面板">
                 🚀 <span>控制面板</span>
-            </button>
-            <button class="sidebar-action-btn danger" onclick="quickDestroyPublic()" title="一键销毁公网公开数据文件">
-                🔒 <span>销毁公网公开数据</span>
             </button>
             <button class="sidebar-action-btn" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
                 💾 <span>手动备份到仓库</span>
@@ -1686,6 +1683,37 @@
             
             <div class="modal-buttons" style="margin-top: 5px;">
                 <button class="modal-btn cancel" onclick="closeVisitorAuthModalDirect()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制面板弹窗（极简布局：一键同步 + Key复制 + 安全销毁） -->
+    <div class="modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
+        <div class="modal" style="width: 440px;" onclick="event.stopPropagation()">
+            <div class="folder-modal-header" style="border-bottom: 2px dashed #ecd5cc; padding-bottom: 10px; margin-bottom: 8px;">
+                <div class="folder-modal-title" style="font-size: 16px; color: #b56565; font-weight: 700;">🚀 云端同步与数据管理</div>
+                <button class="folder-modal-close" onclick="closeControlPanelModalDirect()">×</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="modal-btn confirm" style="padding: 12px; width: 100%; font-size: 14px; font-weight: 600;" onclick="quickPublishToPublic()">✨ 立即执行公网同步并随机刷新 Key</button>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label class="category-selector-label">当前访问密码 (Key)：</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="panelPubKeyDisplay" readonly value="点击上方按钮生成" style="background: #fff; font-family: monospace; font-weight: 600; color: #a34848; text-align: center;">
+                        <button class="modal-btn confirm" style="white-space: nowrap; padding: 10px 16px;" onclick="copyPubKeyToClipboard()">复制</button>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px dashed #ecd5cc; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; color: #b5a49c;">销毁公网公开分享数据：</span>
+                    <button class="modal-btn" style="background: #fdf2f2; border: 1.5px solid #f0ded6; color: #c45555; padding: 6px 12px; font-size: 12px; font-weight: 600;" onclick="quickDestroyPublic()">销毁公开数据</button>
+                </div>
+            </div>
+
+            <div class="modal-buttons" style="margin-top: 6px;">
+                <button class="modal-btn cancel" style="width: 100%; padding: 8px;" onclick="closeControlPanelModalDirect()">关闭</button>
             </div>
         </div>
     </div>
@@ -2203,6 +2231,41 @@
             document.getElementById('visitorAuthModal').style.display = 'none';
         }
 
+        function openControlPanelModal() {
+            document.getElementById('controlPanelModal').style.display = 'flex';
+            const savedKey = localStorage.getItem('markflow_pub_key');
+            const input = document.getElementById('panelPubKeyDisplay');
+            if (savedKey) {
+                input.value = savedKey;
+            } else {
+                input.value = '尚未生成，请点击上方按钮';
+            }
+        }
+        function closeControlPanelModal(e) {
+            if (e.target.id === 'controlPanelModal') {
+                closeControlPanelModalDirect();
+            }
+        }
+        function closeControlPanelModalDirect() {
+            document.getElementById('controlPanelModal').style.display = 'none';
+        }
+
+        function copyPubKeyToClipboard() {
+            const input = document.getElementById('panelPubKeyDisplay');
+            const val = input.value.trim();
+            if (!val || val.includes('尚未生成')) {
+                alert('当前还没有生成的访问密码，请先点击执行公网同步！');
+                return;
+            }
+            navigator.clipboard.writeText(val).then(() => {
+                showToast("✨ 访问密码已成功复制到剪贴板！");
+            }).catch(() => {
+                input.select();
+                document.execCommand('copy');
+                showToast("✨ 访问密码已复制！");
+            });
+        }
+
         async function confirmVisitorSync() {
             const enteredKey = document.getElementById('visitorKeyInput').value.trim();
 
@@ -2478,7 +2541,7 @@
             }
         }
 
-        // 一键静默后台同步到公开公网
+        // 一键静默后台同步到公开公网（修复 Key 无法随机生成 Bug：每次点击强制生成新 Key）
         async function quickPublishToPublic() {
             const token = localStorage.getItem('gh_token');
             const privateRepo = localStorage.getItem('gh_target_repo');
@@ -2509,15 +2572,13 @@
                     if (!createRes.ok) throw new Error('自动创建公开仓库失败');
                 }
 
-                let currentKey = localStorage.getItem('markflow_pub_key');
-                if (!currentKey) {
-                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-                    currentKey = "";
-                    for (let i = 0; i < 8; i++) {
-                        currentKey += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    localStorage.setItem('markflow_pub_key', currentKey);
+                // 强制随机生成全新的 8 位访问密码 (Key)
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                let newKey = "";
+                for (let i = 0; i < 8; i++) {
+                    newKey += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
+                localStorage.setItem('markflow_pub_key', newKey);
 
                 await manualSyncBackupQuietly();
 
@@ -2532,7 +2593,7 @@
                     notesList,
                     customStickers,
                     frequentSearchTags,
-                    pubKey: currentKey,
+                    pubKey: newKey,
                     updatedAt: new Date().toISOString()
                 };
                 const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
@@ -2548,7 +2609,9 @@
                 });
 
                 if (putRes.ok) {
-                    alert(`✨ 后台一键同步成功！\n🔑 当前访问密码(Key): ${currentKey}\n(可将此密码发给手机端或其他设备进行访客同步)`);
+                    // 更新控制面板弹窗中的 Key 输入框显示
+                    document.getElementById('panelPubKeyDisplay').value = newKey;
+                    showToast("✨ 公网同步成功，Key 已随机刷新！");
                 } else {
                     throw new Error('写入公开仓库失败');
                 }
@@ -2597,6 +2660,7 @@
                 }
 
                 localStorage.removeItem('markflow_pub_key');
+                document.getElementById('panelPubKeyDisplay').value = '已销毁，请重新同步';
                 alert('🔒 公开分享数据文件 (Stockage) 已成功在公开仓库中被彻底删除！所有通过访客密码同步的其他设备在刷新时将自动检测并清理旧数据。');
             } catch (e) {
                 console.error(e);
