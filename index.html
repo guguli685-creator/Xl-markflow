@@ -1651,11 +1651,9 @@
         <div id="menuList"></div>
 
         <div class="sidebar-bottom-actions">
-            <!-- 访客密码免Token同步 -->
             <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客凭密码免Token同步">
                 🔑 <span>访客密码同步</span>
             </button>
-            <!-- 控制面板菜单按钮 -->
             <button class="sidebar-action-btn" onclick="openControlPanelModal()" title="控制面板">
                 🌐 <span>控制面板</span>
             </button>
@@ -1782,8 +1780,8 @@
         </div>
     </div>
 
-    <!-- 访客密码免Token同步弹窗 -->
-    <div class="modal-overlay" id="visitorAuthModal" onclick="closeVisitorAuthModal(event)">
+    <!-- 访客密码免Token同步弹窗（已加固：点击背景空白处不会再闪退消失） -->
+    <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
             <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员设定的 **固定访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
@@ -1801,7 +1799,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗（密码现在支持手动自由修改和固定） -->
+    <!-- 控制面板弹窗（密码现在支持手动自由修改和固定，绝不会点同步时自动刷新） -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1969,7 +1967,6 @@
     </div>
 
     <script>
-        // 固定硬编码的公开仓库路径
         const FIXED_PUBLIC_REPO = "guguli685-creator/Xl-markflow-public";
 
         let frequentSearchTags = [];
@@ -2280,16 +2277,11 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
-        // 访客密码免Token同步弹窗控制
+        // 访客密码免Token同步弹窗控制（已彻底移除了点击背景自动关闭，防止误触闪退）
         function openVisitorAuthModal() {
             document.getElementById('visitorAuthModal').style.display = 'flex';
             document.getElementById('visitorKeyInput').value = '';
             setTimeout(() => document.getElementById('visitorKeyInput').focus(), 50);
-        }
-        function closeVisitorAuthModal(e) {
-            if (e.target.id === 'visitorAuthModal') {
-                closeVisitorAuthModalDirect();
-            }
         }
         function closeVisitorAuthModalDirect() {
             document.getElementById('visitorAuthModal').style.display = 'none';
@@ -3334,7 +3326,6 @@
             if (!token || !privateRepo) {
                 if (badge) { badge.innerText = '未登录'; badge.style.background = '#fdf2f2'; badge.style.color = '#c45555'; }
             } else {
-                // 如果本地没有设置过密码，默认给一个固定的初始密码（例如 MarkFlow2026）
                 let savedKey = localStorage.getItem('markflow_pub_key');
                 if (!savedKey) {
                     savedKey = "MarkFlow2026";
@@ -3398,7 +3389,7 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    // 获取当前输入框里用户设定的固定密码
+                    // 核心修改：绝对使用当前输入框内的固定密码，绝对不随机刷新
                     let currentKey = document.getElementById('publicRandomKeyInput').value.trim() || "MarkFlow2026";
                     localStorage.setItem('markflow_pub_key', currentKey);
 
