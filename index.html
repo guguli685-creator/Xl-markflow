@@ -832,11 +832,11 @@
 
         .bookmark-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 9px 12px; border-radius: 12px; font-size: 14px;
+            padding: 8px 10px; border-radius: 10px; font-size: 14px;
             background: #fffbf8; border: 1.5px solid #faede6;
             transition: all 0.2s;
             cursor: pointer;
-            gap: 12px;
+            gap: 10px;
         }
         .bookmark-item:hover { background: #faede6; border-color: #f2dfd6; }
         
@@ -853,9 +853,7 @@
             object-fit: contain;
             flex-shrink: 0;
             background: transparent;
-            padding: 0;
-            border: none;
-            display: block;
+            padding: 2px;
         }
 
         .bookmark-content-box {
@@ -1359,6 +1357,7 @@
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
 
+        /* 控制面板弹窗样式 */
         .control-panel-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(92, 75, 67, 0.45);
@@ -1635,6 +1634,7 @@
     </style>
 </head>
 <body>
+
     <div class="mobile-header">
         <h2>✨ MarkFlow</h2>
         <div class="mobile-header-actions">
@@ -1791,10 +1791,11 @@
         </div>
     </div>
 
+    <!-- 访客密码免Token同步弹窗 -->
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员生成的 **访问密码 (Key)** 即可免登录拉取同步云端书签、笔记与标签！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员最新生成的访问密码 (Key) 即可免登录拉取同步云端书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
@@ -1809,6 +1810,7 @@
         </div>
     </div>
 
+    <!-- 控制面板弹窗 -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1816,7 +1818,7 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">点击同步将自动将书签、笔记及标签打包同步，长期有效无时效限制</p>
+            <p class="panel-desc">点击同步将自动生成随机访问密码，长期有效无时效限制</p>
 
             <div class="input-row">
                 <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
@@ -1830,6 +1832,7 @@
         </div>
     </div>
 
+    <!-- 网页预览弹窗 -->
     <div class="bookmark-preview-modal-overlay" id="bookmarkPreviewModal" onclick="closeBookmarkPreviewModal(event)">
         <div class="bookmark-preview-modal-box">
             <div class="bookmark-preview-modal-header">
@@ -1873,6 +1876,7 @@
 
     <div class="toast-tip" id="toastTip">记录成功</div>
 
+    <!-- GitHub 绑定弹窗 -->
     <div class="modal-overlay" id="githubAuthModal">
         <div class="modal">
             <h3>☁️ 绑定您的私有仓库</h3>
@@ -2029,6 +2033,10 @@
             applyLayoutModeClass();
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
+
+            // 访客端自动校验云端状态：如果曾经通过访客同步过，检查公开仓库是否已被销毁
+            await checkVisitorSyncValidity();
+
             switchView(currentView, currentCategory, null);
             initControlPanelStatus();
 
@@ -2087,6 +2095,47 @@
             }
         });
 
+        // 核心：访客端自动校验公开仓库是否被主端销毁
+        async function checkVisitorSyncValidity() {
+            const syncedKey = localStorage.getItem('markflow_pub_key');
+            const syncedRepo = localStorage.getItem('gh_public_repo');
+            
+            // 如果既没有存过访客密码，又没有绑私人Token，说明是纯净访客或本地初始状态，跳过
+            if (!syncedKey && !localStorage.getItem('gh_token')) return;
+            if (!syncedKey) return; // 如果有Token说明是管理员，不受公开销毁影响
+
+            try {
+                const res = await fetch(`https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`);
+                if (!res.ok) {
+                    // 如果请求失败（404代表公开仓库或Stockage文件已被销毁删除）
+                    throw new Error('公开数据已被销毁');
+                }
+                const fileData = await res.json();
+                const jsonContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+
+                // 如果密码对不上，或者远端被清空
+                if (!jsonContent.pubKey || jsonContent.pubKey !== syncedKey) {
+                    throw new Error('访问密码已失效或被销毁');
+                }
+            } catch (err) {
+                // 触发全端销毁清理：清空访客本地所有同步缓存数据
+                localStorage.removeItem('markflow_pub_key');
+                localStorage.removeItem('gh_public_repo');
+                localStorage.removeItem('markflow_categories');
+                localStorage.removeItem('markflow_bookmarks');
+                localStorage.removeItem('markflow_notesList');
+                localStorage.removeItem('markflow_customStickers');
+
+                categories = [];
+                bookmarks = [];
+                notesList = [{ id: 1, title: "🌸 我的手帐日常", content: "<p></p>" }];
+                customStickers = [];
+
+                alert('🔒 检测到管理员已在控制面板销毁了公开分享数据，本地缓存的访客数据已自动清空！');
+            }
+        }
+
+        // 辅助函数：安全获取网站 Favicon 缩略图
         function getFaviconUrl(url) {
             try {
                 const domain = new URL(url).hostname;
@@ -2096,6 +2145,7 @@
             }
         }
 
+        // 图片加载失败降级处理
         function handleFaviconError(imgEl) {
             imgEl.style.display = 'none';
         }
@@ -2145,7 +2195,8 @@
                         frequentSearchTags = jsonContent.tags;
                     }
                 }
-            } catch (err) {}
+            } catch (err) {
+            }
         }
 
         function persistState() {
@@ -2296,6 +2347,7 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
+        // 访客密码免Token同步弹窗控制
         function openVisitorAuthModal() {
             document.getElementById('visitorAuthModal').style.display = 'flex';
             document.getElementById('visitorKeyInput').value = '';
@@ -2323,7 +2375,7 @@
                 const jsonContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
 
                 if (!jsonContent.pubKey || jsonContent.pubKey !== enteredKey) {
-                    alert('❌ 访问密码错误，无法同步！');
+                    alert('❌ 访问密码错误或已失效，无法同步！');
                     return;
                 }
 
@@ -2345,14 +2397,13 @@
                 }
                 if (jsonContent.frequentSearchTags && Array.isArray(jsonContent.frequentSearchTags)) {
                     frequentSearchTags = jsonContent.frequentSearchTags;
-                    await updateTagsJsonInRepo(frequentSearchTags);
                 }
 
                 localStorage.setItem('gh_public_repo', FIXED_PUBLIC_REPO);
                 localStorage.setItem('markflow_pub_key', enteredKey);
 
                 closeVisitorAuthModalDirect();
-                alert('✨ 密码验证成功！云端书签、笔记与标签已成功同步。');
+                alert('✨ 密码验证成功！云端书签、笔记与搜索标签已成功同步。');
                 window.location.reload(true);
             } catch (err) {
                 console.error(err);
@@ -3434,7 +3485,7 @@
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            message: '🚀 同步全量书签、笔记与标签到公开仓库 Stockage (MarkFlow)',
+                            message: '🚀 同步全量书签、笔记与搜索标签到公开仓库 Stockage',
                             content: encodedContent,
                             sha: stockageSha || undefined
                         })
@@ -3444,50 +3495,36 @@
                         badge.innerText = '已公开';
                         badge.style.background = '#e1f5fe';
                         badge.style.color = '#0288d1';
-                        alert(`✨ 数据与标签已成功同步到公开仓库！\n🔑 访问密码: ${newRandomKey}`);
+                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成全新随机访问密码: ${newRandomKey}`);
                         closeControlPanelModal();
                     } else {
                         const errPutJson = await putRes.json();
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
+                    // 销毁公开数据：将公开仓库中的 Stockage 文件彻底删除，访客端下次打开或同步时即可自动检测失效并清除本地旧数据
                     const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (getRes.ok) {
-                        stockageSha = (await getRes.json()).sha;
-                    }
+                    if (getRes.ok) stockageSha = (await getRes.json()).sha;
 
                     if (stockageSha) {
-                        const emptyBundle = {
-                            categories: [],
-                            bookmarks: [],
-                            notesList: [],
-                            customStickers: [],
-                            frequentSearchTags: [],
-                            pubKey: "",
-                            updatedAt: new Date().toISOString()
-                        };
-                        const emptyEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(emptyBundle, null, 2))));
-
                         await fetch(stockageUrl, {
-                            method: 'PUT',
+                            method: 'DELETE',
                             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                message: '🔒 销毁清空 Stockage 公开数据文件',
-                                content: emptyEncoded,
+                                message: '🔒 销毁公网公开数据 Stockage',
                                 sha: stockageSha
                             })
                         });
                     }
 
                     localStorage.removeItem('markflow_pub_key');
-                    document.getElementById('publicRandomKeyInput').value = '';
-                    badge.innerText = '已销毁清空';
+                    badge.innerText = '已销毁';
                     badge.style.background = '#fdf2f2';
                     badge.style.color = '#c45555';
 
-                    alert('🔒 公开仓库数据已成功清空并销毁！');
+                    alert('🔒 公开分享数据已成功销毁！所有通过访客密码同步的其他设备在刷新时将自动检测并清理旧数据。');
                     closeControlPanelModal();
                 }
             } catch (e) {
@@ -3615,19 +3652,6 @@
             document.getElementById('noteSubModal').style.display = 'flex';
             document.getElementById('newNoteTitleInput').value = '';
             setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
-        }
-
-        function confirmCreateNote() {
-            const title = document.getElementById('newNoteTitleInput').value.trim();
-            if (!title) {
-                alert('请输入页面名称哦~');
-                return;
-            }
-            const newId = notesList.length > 0 ? Math.max(...notesList.map(n => n.id)) + 1 : 1;
-            notesList.push({ id: newId, title: title, content: '<p></p>' });
-            closeModal();
-            persistState();
-            switchView('notes', newId);
         }
 
         function openFolderModal(groupName) {
