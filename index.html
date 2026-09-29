@@ -1780,15 +1780,15 @@
         </div>
     </div>
 
-    <!-- 访客密码免Token同步弹窗（已加固：点击背景空白处不会再闪退消失） -->
+    <!-- 访客密码免Token同步弹窗 -->
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员设定的 **固定访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
-                <input type="password" id="visitorKeyInput" placeholder="请输入固定访问密码..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmVisitorSync()">
+                <input type="password" id="visitorKeyInput" placeholder="请输入访问密码..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmVisitorSync()">
             </div>
 
             <button class="modal-btn confirm" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步云端数据</button>
@@ -1799,7 +1799,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗（密码现在支持手动自由修改和固定，绝不会点同步时自动刷新） -->
+    <!-- 控制面板弹窗（点击同步时自动生成新的时效密码） -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1807,15 +1807,15 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">设置固定访问密码 (支持自定义修改)</p>
+            <p class="panel-desc">每次点击同步将自动生成带有时效的新密码</p>
 
             <div class="input-row">
-                <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="输入或生成固定密码" oninput="saveCustomKeyInput(this.value)">
+                <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
                 <button onclick="copyPublicKey()" class="btn-copy" title="复制密码">📋</button>
             </div>
 
             <div class="button-group">
-                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步</button>
+                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (生成新密码)</button>
                 <button onclick="publishToPublic(false)" class="btn-danger-ctrl" style="flex: 1;">🔒 销毁</button>
             </div>
         </div>
@@ -2277,7 +2277,7 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
-        // 访客密码免Token同步弹窗控制（已彻底移除了点击背景自动关闭，防止误触闪退）
+        // 访客密码免Token同步弹窗控制
         function openVisitorAuthModal() {
             document.getElementById('visitorAuthModal').style.display = 'flex';
             document.getElementById('visitorKeyInput').value = '';
@@ -2305,7 +2305,7 @@
                 const jsonContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
 
                 if (!jsonContent.pubKey || jsonContent.pubKey !== enteredKey) {
-                    alert('❌ 访问密码错误，无法同步！');
+                    alert('❌ 访问密码错误或已失效，无法同步！');
                     return;
                 }
 
@@ -2429,7 +2429,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || 'MarkFlow2026',
+                pubKey: localStorage.getItem('markflow_pub_key') || '',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -3333,15 +3333,8 @@
                 }
                 document.getElementById('publicRandomKeyInput').value = savedKey;
                 if (badge) {
-                    badge.innerText = '已公开'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
+                    badge.innerText = '已就绪'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
                 }
-            }
-        }
-
-        function saveCustomKeyInput(val) {
-            const cleanVal = val.trim();
-            if (cleanVal) {
-                localStorage.setItem('markflow_pub_key', cleanVal);
             }
         }
 
@@ -3389,9 +3382,15 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    // 核心修改：绝对使用当前输入框内的固定密码，绝对不随机刷新
-                    let currentKey = document.getElementById('publicRandomKeyInput').value.trim() || "MarkFlow2026";
-                    localStorage.setItem('markflow_pub_key', currentKey);
+                    // 每次点击同步时，生成带有有时效性的全新 8 位随机密码
+                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                    let newRandomKey = "";
+                    for (let i = 0; i < 8; i++) {
+                        newRandomKey += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+
+                    document.getElementById('publicRandomKeyInput').value = newRandomKey;
+                    localStorage.setItem('markflow_pub_key', newRandomKey);
 
                     await manualSyncBackupQuietly();
 
@@ -3405,7 +3404,7 @@
                         bookmarks,
                         notesList,
                         customStickers,
-                        pubKey: currentKey,
+                        pubKey: newRandomKey,
                         updatedAt: new Date().toISOString()
                     };
                     const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
@@ -3424,7 +3423,7 @@
                         badge.innerText = '已公开';
                         badge.style.background = '#e1f5fe';
                         badge.style.color = '#0288d1';
-                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 当前固定的访问密码: ${currentKey}`);
+                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成全新时效访问密码: ${newRandomKey}`);
                         closeControlPanelModal();
                     } else {
                         const errPutJson = await putRes.json();
