@@ -1543,9 +1543,9 @@
                 🔑 <span>访客密码同步</span>
             </button>
             <button class="sidebar-action-btn sync-primary" onclick="quickPublishToPublic()" title="一键静默同步到公网公开仓库">
-                🚀 <span>一键同步（含标签）</span>
+                🚀 <span>控制面板</span>
             </button>
-            <button class="sidebar-action-btn danger" onclick="quickDestroyPublic()" title="一键销毁公网公开数据">
+            <button class="sidebar-action-btn danger" onclick="quickDestroyPublic()" title="一键销毁公网公开数据文件">
                 🔒 <span>销毁公网公开数据</span>
             </button>
             <button class="sidebar-action-btn" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
@@ -2558,7 +2558,7 @@
             }
         }
 
-        // 一键静默后台销毁公网公开数据
+        // 一键静默后台精确删除公开仓库中的 Stockage 文件实现销毁
         async function quickDestroyPublic() {
             const token = localStorage.getItem('gh_token');
             const privateRepo = localStorage.getItem('gh_target_repo');
@@ -2577,21 +2577,27 @@
                 const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                 let stockageSha = "";
                 const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) stockageSha = (await getRes.json()).sha;
+                if (getRes.ok) {
+                    stockageSha = (await getRes.json()).sha;
+                }
 
                 if (stockageSha) {
-                    await fetch(stockageUrl, {
+                    const deleteRes = await fetch(stockageUrl, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            message: '🔒 一键后台销毁公网公开数据 Stockage',
+                            message: '🔒 一键后台彻底删除公开数据 Stockage 文件',
                             sha: stockageSha
                         })
                     });
+
+                    if (!deleteRes.ok) {
+                        throw new Error('删除 Stockage 文件失败');
+                    }
                 }
 
                 localStorage.removeItem('markflow_pub_key');
-                alert('🔒 公开分享数据已成功在后台销毁！');
+                alert('🔒 公开分享数据文件 (Stockage) 已成功在公开仓库中被彻底删除！所有通过访客密码同步的其他设备在刷新时将自动检测并清理旧数据。');
             } catch (e) {
                 console.error(e);
                 alert(`销毁发生异常: ${e.message}`);
