@@ -1651,7 +1651,7 @@
         <div id="menuList"></div>
 
         <div class="sidebar-bottom-actions">
-            <!-- 访客免Token密码同步按钮 -->
+            <!-- 访客密码免Token同步 -->
             <button class="sidebar-action-btn visitor-btn" onclick="openVisitorAuthModal()" title="访客凭密码免Token同步">
                 🔑 <span>访客密码同步</span>
             </button>
@@ -1782,23 +1782,18 @@
         </div>
     </div>
 
-    <!-- 访客免Token密码同步弹窗 -->
+    <!-- 访客密码免Token同步弹窗 -->
     <div class="modal-overlay" id="visitorAuthModal" onclick="closeVisitorAuthModal(event)">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">无需登录 Token，输入公开仓库名与 8 位访问密码即可直接同步书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员设定的 **固定访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
             
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                <label class="category-selector-label">公开仓库名 (例如: 用户名/仓库名)：</label>
-                <input type="text" id="visitorRepoInput" placeholder="例如: guguli685-creator/Xl-markflow-public" autocomplete="off">
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
+                <label class="category-selector-label">访问密码 (Key)：</label>
+                <input type="password" id="visitorKeyInput" placeholder="请输入固定访问密码..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmVisitorSync()">
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                <label class="category-selector-label">8位访问密码 (Key)：</label>
-                <input type="password" id="visitorKeyInput" placeholder="输入8位随机密码..." autocomplete="off">
-            </div>
-
-            <button class="modal-btn confirm" style="width: 100%; margin-top: 4px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步公开数据</button>
+            <button class="modal-btn confirm" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步云端数据</button>
             
             <div class="modal-buttons" style="margin-top: 5px;">
                 <button class="modal-btn cancel" onclick="closeVisitorAuthModalDirect()">取消</button>
@@ -1806,7 +1801,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗 -->
+    <!-- 控制面板弹窗（密码现在支持手动自由修改和固定） -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1814,11 +1809,11 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">随机生成密码 (8位数字、英文、罗马符号)</p>
+            <p class="panel-desc">设置固定访问密码 (支持自定义修改)</p>
 
             <div class="input-row">
-                <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步自动生成 Key" readonly>
-                <button onclick="copyPublicKey()" class="btn-copy" title="复制 Key">📋</button>
+                <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="输入或生成固定密码" oninput="saveCustomKeyInput(this.value)">
+                <button onclick="copyPublicKey()" class="btn-copy" title="复制密码">📋</button>
             </div>
 
             <div class="button-group">
@@ -1974,6 +1969,9 @@
     </div>
 
     <script>
+        // 固定硬编码的公开仓库路径
+        const FIXED_PUBLIC_REPO = "guguli685-creator/Xl-markflow-public";
+
         let frequentSearchTags = [];
         let tagsCollapsed = localStorage.getItem('markflow_tagsCollapsed') === 'true';
 
@@ -2282,11 +2280,11 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
-        // 访客免Token密码同步弹窗控制
+        // 访客密码免Token同步弹窗控制
         function openVisitorAuthModal() {
             document.getElementById('visitorAuthModal').style.display = 'flex';
-            document.getElementById('visitorRepoInput').value = localStorage.getItem('gh_public_repo') || '';
             document.getElementById('visitorKeyInput').value = '';
+            setTimeout(() => document.getElementById('visitorKeyInput').focus(), 50);
         }
         function closeVisitorAuthModal(e) {
             if (e.target.id === 'visitorAuthModal') {
@@ -2298,18 +2296,17 @@
         }
 
         async function confirmVisitorSync() {
-            const publicRepo = document.getElementById('visitorRepoInput').value.trim();
             const enteredKey = document.getElementById('visitorKeyInput').value.trim();
 
-            if (!publicRepo || !enteredKey) {
-                alert('请填写公开仓库名以及 8 位访问密码！');
+            if (!enteredKey) {
+                alert('请输入访问密码 (Key)！');
                 return;
             }
 
             try {
-                const res = await fetch(`https://api.github.com/repos/${publicRepo}/contents/Stockage`);
+                const res = await fetch(`https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`);
                 if (!res.ok) {
-                    throw new Error('无法连接到公开仓库或未找到 Stockage 文件，请检查仓库名是否正确。');
+                    throw new Error('无法连接到公开仓库或未找到公开数据文件，请确认管理员已在控制面板点击同步。');
                 }
 
                 const fileData = await res.json();
@@ -2337,11 +2334,11 @@
                     localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
                 }
 
-                localStorage.setItem('gh_public_repo', publicRepo);
+                localStorage.setItem('gh_public_repo', FIXED_PUBLIC_REPO);
                 localStorage.setItem('markflow_pub_key', enteredKey);
 
                 closeVisitorAuthModalDirect();
-                alert('✨ 访客密码验证成功！云端书签与笔记已成功同步。');
+                alert('✨ 密码验证成功！云端书签与笔记已成功同步。');
                 window.location.reload(true);
             } catch (err) {
                 console.error(err);
@@ -2440,7 +2437,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || '',
+                pubKey: localStorage.getItem('markflow_pub_key') || 'MarkFlow2026',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -3337,21 +3334,31 @@
             if (!token || !privateRepo) {
                 if (badge) { badge.innerText = '未登录'; badge.style.background = '#fdf2f2'; badge.style.color = '#c45555'; }
             } else {
-                const savedKey = localStorage.getItem('markflow_pub_key');
-                if (savedKey && badge) {
-                    document.getElementById('publicRandomKeyInput').value = savedKey;
-                    badge.innerText = '已公开'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
-                } else if (badge) {
-                    badge.innerText = '已就绪';
+                // 如果本地没有设置过密码，默认给一个固定的初始密码（例如 MarkFlow2026）
+                let savedKey = localStorage.getItem('markflow_pub_key');
+                if (!savedKey) {
+                    savedKey = "MarkFlow2026";
+                    localStorage.setItem('markflow_pub_key', savedKey);
                 }
+                document.getElementById('publicRandomKeyInput').value = savedKey;
+                if (badge) {
+                    badge.innerText = '已公开'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
+                }
+            }
+        }
+
+        function saveCustomKeyInput(val) {
+            const cleanVal = val.trim();
+            if (cleanVal) {
+                localStorage.setItem('markflow_pub_key', cleanVal);
             }
         }
 
         function copyPublicKey() {
             const val = document.getElementById('publicRandomKeyInput').value;
-            if (!val) { alert('当前没有可复制的 Key'); return; }
+            if (!val) { alert('当前没有可复制的密码'); return; }
             navigator.clipboard.writeText(val);
-            alert('📋 访问 Key 已复制到剪贴板！');
+            alert('📋 访问密码已复制到剪贴板！');
         }
 
         async function publishToPublic(isPublic) {
@@ -3365,23 +3372,11 @@
                 return;
             }
 
-            let publicRepo = localStorage.getItem('gh_public_repo');
-            if (!publicRepo) {
-                const parts = privateRepo.split('/');
-                if (parts.length === 2) {
-                    publicRepo = `${parts[0]}/${parts[1].replace('-private', '')}-public`;
-                } else {
-                    publicRepo = prompt("请输入您的【公开仓库名】(格式: 用户名/公开仓库名):");
-                }
-                if (!publicRepo) return;
-                localStorage.setItem('gh_public_repo', publicRepo);
-            }
-
             try {
                 badge.innerText = '提交中...';
 
                 if (isPublic) {
-                    const checkRepoRes = await fetch(`https://api.github.com/repos/${publicRepo}`, {
+                    const checkRepoRes = await fetch(`https://api.github.com/repos/${FIXED_PUBLIC_REPO}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
 
@@ -3390,7 +3385,7 @@
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                name: publicRepo.split('/')[1],
+                                name: FIXED_PUBLIC_REPO.split('/')[1],
                                 description: "MarkFlow Public Stockage Repository",
                                 private: false
                             })
@@ -3403,18 +3398,13 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ";
-                    let randomKey = "";
-                    for (let i = 0; i < 8; i++) {
-                        randomKey += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-
-                    document.getElementById('publicRandomKeyInput').value = randomKey;
-                    localStorage.setItem('markflow_pub_key', randomKey);
+                    // 获取当前输入框里用户设定的固定密码
+                    let currentKey = document.getElementById('publicRandomKeyInput').value.trim() || "MarkFlow2026";
+                    localStorage.setItem('markflow_pub_key', currentKey);
 
                     await manualSyncBackupQuietly();
 
-                    const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
+                    const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
                     if (getRes.ok) stockageSha = (await getRes.json()).sha;
@@ -3424,7 +3414,7 @@
                         bookmarks,
                         notesList,
                         customStickers,
-                        pubKey: randomKey,
+                        pubKey: currentKey,
                         updatedAt: new Date().toISOString()
                     };
                     const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
@@ -3443,14 +3433,14 @@
                         badge.innerText = '已公开';
                         badge.style.background = '#e1f5fe';
                         badge.style.color = '#0288d1';
-                        alert(`✨ 数据已成功同步到公开仓库 Stockage！\n🔑 8位混合随机访问 Key: ${randomKey}`);
+                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 当前固定的访问密码: ${currentKey}`);
                         closeControlPanelModal();
                     } else {
                         const errPutJson = await putRes.json();
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
-                    const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
+                    const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
                     if (getRes.ok) stockageSha = (await getRes.json()).sha;
@@ -3471,9 +3461,6 @@
                     });
 
                     if (delRes.ok) {
-                        document.getElementById('publicRandomKeyInput').value = "";
-                        localStorage.removeItem('markflow_pub_key');
-                        await manualSyncBackupQuietly();
                         badge.innerText = '已销毁';
                         badge.style.background = '#fdf2f2';
                         badge.style.color = '#c45555';
@@ -3500,7 +3487,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || '',
+                pubKey: localStorage.getItem('markflow_pub_key') || 'MarkFlow2026',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
