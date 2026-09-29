@@ -1780,15 +1780,15 @@
         </div>
     </div>
 
-    <!-- 访客密码免Token同步弹窗 -->
+    <!-- 访客密码免Token同步弹窗（防闪退加固） -->
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入电脑端控制面板最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
-                <input type="password" id="visitorKeyInput" placeholder="请输入访问密码..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmVisitorSync()">
+                <input type="password" id="visitorKeyInput" placeholder="请输入时效访问密码..." autocomplete="off" onkeydown="if(event.key==='Enter') confirmVisitorSync()">
             </div>
 
             <button class="modal-btn confirm" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="confirmVisitorSync()">验证并同步云端数据</button>
@@ -1799,7 +1799,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗（点击同步时自动生成新的时效密码） -->
+    <!-- 控制面板弹窗 -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1807,7 +1807,7 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">每次点击同步将自动生成带有时效的新密码</p>
+            <p class="panel-desc">点击同步将自动生成并刷新带有时效的新密码</p>
 
             <div class="input-row">
                 <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
@@ -1815,7 +1815,7 @@
             </div>
 
             <div class="button-group">
-                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (生成新密码)</button>
+                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (刷新密码)</button>
                 <button onclick="publishToPublic(false)" class="btn-danger-ctrl" style="flex: 1;">🔒 销毁</button>
             </div>
         </div>
@@ -2415,6 +2415,7 @@
             }
         }
 
+        // 核心优化：每次自动备份时，顺便把本地数据和最新 Key 自动同步到公开仓库中（无需再手动点同步）
         async function manualSyncBackup() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -2424,12 +2425,14 @@
                 return;
             }
 
+            // 1. 先备份到私有仓库
             const path = 'data.fow';
             const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+            const currentKey = localStorage.getItem('markflow_pub_key') || 'MarkFlow2026';
 
             const bundleData = {
                 categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || '',
+                pubKey: currentKey,
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -2445,21 +2448,80 @@
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '✨ MarkFlow 更新 data.fow 书签混合流',
+                        message: '✨ MarkFlow 自动更新书签混合流',
                         content: jsonEncoded,
                         sha: fileSha || undefined
                     })
                 });
 
                 if (!putRes.ok) {
-                    alert('同步写入 data.fow 失败。');
+                    alert('同步写入私有仓库失败。');
                     return;
                 }
 
-                alert('☁️ 书签备份成功！data.fow 已安全更新至私有仓库。');
+                // 2. 同时自动将数据同步到公开仓库 Stockage 中（实现免手动点同步）
+                const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
+                let stockSha = "";
+                const stockGetRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (stockGetRes.ok) stockSha = (await stockGetRes.json()).sha;
+
+                const publicBundle = {
+                    categories, bookmarks, notesList, customStickers,
+                    pubKey: currentKey,
+                    updatedAt: new Date().toISOString()
+                };
+                const pubEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
+
+                await fetch(stockageUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '🚀 自动同步全量书签与笔记到公开仓库 Stockage',
+                        content: pubEncoded,
+                        sha: stockSha || undefined
+                    })
+                });
+
+                alert('☁️ 备份成功！私有仓库与公开共享云端已同时更新完成。');
                 showToast();
             } catch(err) {
                 alert('备份失败。');
+            }
+        }
+
+        async function manualSyncBackupQuietly() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return;
+
+            const path = 'data.fow';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+            const bundleData = {
+                categories, bookmarks, customStickers,
+                pubKey: localStorage.getItem('markflow_pub_key') || 'MarkFlow2026',
+                updatedAt: new Date().toISOString()
+            };
+            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+            try {
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    fileSha = (await getRes.json()).sha;
+                }
+                
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ 自动同步 Key 至私有仓库 data.fow',
+                        content: jsonEncoded,
+                        sha: fileSha || undefined
+                    })
+                });
+            } catch(err) {
+                console.error("静默同步 Key 失败", err);
             }
         }
 
@@ -3343,694 +3405,6 @@
             if (!val) { alert('当前没有可复制的密码'); return; }
             navigator.clipboard.writeText(val);
             alert('📋 访问密码已复制到剪贴板！');
-        }
-
-        async function publishToPublic(isPublic) {
-            const token = localStorage.getItem('gh_token');
-            const privateRepo = localStorage.getItem('gh_target_repo');
-            const badge = document.getElementById('pubStatusBadge');
-            
-            if (!token || !privateRepo) {
-                alert('未检测到登录状态，请先在主项目中绑定私有仓库！');
-                openGithubAuthModal();
-                return;
-            }
-
-            try {
-                badge.innerText = '提交中...';
-
-                if (isPublic) {
-                    const checkRepoRes = await fetch(`https://api.github.com/repos/${FIXED_PUBLIC_REPO}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-
-                    if (checkRepoRes.status === 404) {
-                        const createRes = await fetch(`https://api.github.com/user/repos`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                name: FIXED_PUBLIC_REPO.split('/')[1],
-                                description: "MarkFlow Public Stockage Repository",
-                                private: false
-                            })
-                        });
-                        if (!createRes.ok) {
-                            const errJson = await createRes.json();
-                            throw new Error(`自动创建公开仓库失败: ${errJson.message || '未知错误'}`);
-                        }
-                    } else if (!checkRepoRes.ok) {
-                        throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
-                    }
-
-                    // 每次点击同步时，生成带有有时效性的全新 8 位随机密码
-                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-                    let newRandomKey = "";
-                    for (let i = 0; i < 8; i++) {
-                        newRandomKey += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-
-                    document.getElementById('publicRandomKeyInput').value = newRandomKey;
-                    localStorage.setItem('markflow_pub_key', newRandomKey);
-
-                    await manualSyncBackupQuietly();
-
-                    const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
-                    let stockageSha = "";
-                    const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (getRes.ok) stockageSha = (await getRes.json()).sha;
-
-                    const publicBundle = {
-                        categories,
-                        bookmarks,
-                        notesList,
-                        customStickers,
-                        pubKey: newRandomKey,
-                        updatedAt: new Date().toISOString()
-                    };
-                    const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
-
-                    const putRes = await fetch(stockageUrl, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: '🚀 同步全量书签与笔记到公开仓库 Stockage (MarkFlow)',
-                            content: encodedContent,
-                            sha: stockageSha || undefined
-                        })
-                    });
-
-                    if (putRes.ok) {
-                        badge.innerText = '已公开';
-                        badge.style.background = '#e1f5fe';
-                        badge.style.color = '#0288d1';
-                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成全新时效访问密码: ${newRandomKey}`);
-                        closeControlPanelModal();
-                    } else {
-                        const errPutJson = await putRes.json();
-                        throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
-                    }
-                } else {
-                    const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
-                    let stockageSha = "";
-                    const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (getRes.ok) stockageSha = (await getRes.json()).sha;
-
-                    if (!stockageSha) {
-                        alert('公开仓库中未检测到 Stockage 文件。');
-                        badge.innerText = '已就绪';
-                        return;
-                    }
-
-                    const delRes = await fetch(stockageUrl, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: '🔒 销毁公网公开数据 Stockage',
-                            sha: stockageSha
-                        })
-                    });
-
-                    if (delRes.ok) {
-                        badge.innerText = '已销毁';
-                        badge.style.background = '#fdf2f2';
-                        badge.style.color = '#c45555';
-                        alert('🔒 公开数据 Stockage 已成功销毁清除。');
-                        closeControlPanelModal();
-                    } else {
-                        alert('销毁公开数据失败。');
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-                badge.innerText = '异常';
-                alert(`操作发生异常: ${e.message}`);
-            }
-        }
-
-        async function manualSyncBackupQuietly() {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) return;
-
-            const path = 'data.fow';
-            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-
-            const bundleData = {
-                categories, bookmarks, customStickers,
-                pubKey: localStorage.getItem('markflow_pub_key') || 'MarkFlow2026',
-                updatedAt: new Date().toISOString()
-            };
-            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
-
-            try {
-                let fileSha = '';
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) {
-                    fileSha = (await getRes.json()).sha;
-                }
-                
-                await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '✨ 自动同步 Key 至私有仓库 data.fow',
-                        content: jsonEncoded,
-                        sha: fileSha || undefined
-                    })
-                });
-            } catch(err) {
-                console.error("静默同步 Key 失败", err);
-            }
-        }
-
-        function formatText(tag) {
-            const editor = document.getElementById('noteBodyInput');
-            editor.focus();
-            if (tag === 'P') {
-                document.execCommand('formatBlock', false, '<p>');
-            } else {
-                document.execCommand('formatBlock', false, `<${tag}>`);
-            }
-            autoSaveState();
-        }
-
-        function execCmd(command) {
-            const editor = document.getElementById('noteBodyInput');
-            editor.focus();
-            document.execCommand(command, false, null);
-            updateStats();
-            autoSaveState();
-        }
-
-        function formatBlock(tag) {
-            const editor = document.getElementById('noteBodyInput');
-            editor.focus();
-            document.execCommand('formatBlock', false, `<${tag}>`);
-            updateStats();
-            autoSaveState();
-        }
-
-        function handleNoteKeyDown(e) {
-            if (e.key === 'Enter') {
-                document.execCommand('insertParagraph', false, null);
-                e.preventDefault();
-            }
-            updateStats();
-            autoSaveState();
-        }
-
-        function updateStats() {
-            const editor = document.getElementById('noteBodyInput');
-            const text = editor.innerText || '';
-            const charCount = text.replace(/[\n\r\s]/g, '').length;
-            const lineCount = text.split(/\r\n|\r|\n/).length;
-            
-            document.getElementById('wordCountText').innerText = `字数: ${charCount} 字`;
-            document.getElementById('lineCountText').innerText = `行数: ${lineCount} 行`;
-        }
-
-        function saveActiveNote() {
-            autoSaveState();
-            showToast();
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toastTip');
-            if (msg) toast.innerText = msg;
-            else toast.innerText = '同步成功';
-            
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2000);
-        }
-
-        function deleteNote(id, event) {
-            if(event) event.stopPropagation();
-            if (notesList.length <= 1) {
-                alert('留一个页面吧~ 至少需要保留一个手帐页面。');
-                return;
-            }
-            if (confirm('确定要删除这个手帐页面吗？')) {
-                notesList = notesList.filter(n => n.id !== id);
-                if (activeNoteId === id) {
-                    activeNoteId = notesList[0].id;
-                }
-                persistState();
-                switchView('notes', activeNoteId);
-            }
-        }
-
-        function openNewNoteModal() {
-            document.getElementById('noteSubModal').style.display = 'flex';
-            document.getElementById('newNoteTitleInput').value = '';
-            setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
-        }
-
-        function openFolderModal(groupName) {
-            currentFolderModalGroup = groupName;
-            document.getElementById('folderModalName').innerText = groupName;
-            renderFolderModalItems(groupName);
-            document.getElementById('folderModalOverlay').style.display = 'flex';
-        }
-
-        function closeFolderModal(e) {
-            if (e.target.id === 'folderModalOverlay') {
-                closeFolderModalDirect();
-            }
-        }
-
-        function closeFolderModalDirect() {
-            document.getElementById('folderModalOverlay').style.display = 'none';
-        }
-
-        function renderFolderModalItems(groupName) {
-            const listContainer = document.getElementById('folderModalItemsList');
-            const items = bookmarks.filter(b => b.group === groupName);
-
-            if (items.length === 0) {
-                listContainer.innerHTML = `<div class="empty-card-tip">当前大文件夹暂无内容，点击下方添加~</div>`;
-                return;
-            }
-
-            let html = '';
-            items.forEach(item => {
-                const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
-                html += `
-                    <div class="bookmark-item" onclick="selectBookmarkItemForPreview(${item.id}, this, event)" ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
-                        <div class="bookmark-content-box">
-                            <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
-                            ${noteHtml}
-                        </div>
-                        <div class="actions" style="opacity:1 !important;">
-                            <button class="btn" onclick="openEditSingleBookmarkModal(${item.id}, event)">✏️</button>
-                            <button class="btn" onclick="deleteBookmark(${item.id}, event); renderFolderModalItems('${groupName}');">×</button>
-                        </div>
-                    </div>
-                `;
-            });
-            listContainer.innerHTML = html;
-        }
-
-        function handleDropBookmark(e, groupName) {
-            e.preventDefault();
-            e.stopPropagation();
-            const targetEl = e.currentTarget;
-            targetEl.classList.remove('drag-over', 'drag-over-card');
-
-            let url = '';
-            let title = '';
-
-            const uriList = e.dataTransfer.getData('text/uri-list');
-            if (uriList) {
-                url = uriList.split('\n')[0].trim();
-            }
-
-            if (!url) {
-                const plainText = e.dataTransfer.getData('text/plain');
-                if (plainText && (plainText.startsWith('http://') || plainText.startsWith('https://'))) {
-                    url = plainText.trim();
-                }
-            }
-
-            const htmlData = e.dataTransfer.getData('text/html');
-            if (htmlData) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlData, 'text/html');
-                const aTag = doc.querySelector('a');
-                if (aTag) {
-                    if (!url) url = aTag.href;
-                    title = aTag.textContent.trim();
-                }
-            }
-
-            if (!url) {
-                const fallbackText = e.dataTransfer.getData('text/plain');
-                if (fallbackText) {
-                    if (fallbackText.startsWith('http')) {
-                        url = fallbackText;
-                        title = fallbackText;
-                    } else {
-                        title = fallbackText;
-                        url = 'https://' + fallbackText;
-                    }
-                }
-            }
-
-            if (!url) {
-                alert('未能识别到有效的网址链接，请尝试直接点击“+ 添加网页”输入。');
-                return;
-            }
-
-            if (!title) {
-                try {
-                    const parsedObj = new URL(url);
-                    title = parsedObj.hostname;
-                } catch(err) {
-                    title = url;
-                }
-            }
-
-            if (!categories.includes(groupName) && !getAllCategories().includes(groupName)) {
-                categories.push(groupName);
-            }
-
-            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
-            bookmarks.push({
-                id: newId,
-                group: groupName,
-                title: title,
-                url: url,
-                note: ''
-            });
-
-            persistState();
-            renderBookmarks(bookmarks);
-            showToast(`✨ 快捷添加成功：${title}`);
-
-            if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                renderFolderModalItems(groupName);
-            }
-        }
-
-        function renderBookmarks(data) {
-            const container = document.getElementById('bookmarkContainer');
-            container.innerHTML = '';
-
-            const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
-
-            if (catsToRender.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 120px 20px; color:#b5a49c; font-size:15px; font-style:italic;">✨ 暂无书签分类，点击右上角 “+” 添加书签、新建卡片，或从左侧从仓库恢复网页。</div>`;
-                updateSidebar();
-                return;
-            }
-            
-            catsToRender.forEach((groupName) => {
-                const items = data.filter(b => b.group === groupName);
-
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'card-group';
-
-                cardDiv.addEventListener('dragover', (e) => e.preventDefault());
-                cardDiv.addEventListener('dragenter', (e) => {
-                    e.preventDefault();
-                    cardDiv.classList.add('drag-over-card');
-                });
-                cardDiv.addEventListener('dragleave', (e) => {
-                    if (!cardDiv.contains(e.relatedTarget)) {
-                        cardDiv.classList.remove('drag-over-card');
-                    }
-                });
-                cardDiv.addEventListener('drop', (e) => {
-                    handleDropBookmark(e, groupName);
-                });
-
-                let cardHtml = `
-                    <div class="card-group-title">
-                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" title="点击展开大文件夹展开视图" onclick="openFolderModal('${groupName}')">📁 ${groupName}</span>
-                        <div class="card-group-right">
-                            <span class="count-badge">${items.length}</span>
-                            <button class="card-edit-btn" onclick="openEditCardModal('${groupName}', event)" title="编辑分类名称">✏️</button>
-                            <button class="delete-card-btn" onclick="deleteCategory('${groupName}', event)" title="删除该卡片分类">×</button>
-                        </div>
-                    </div>
-                `;
-                
-                if (items.length === 0) {
-                    cardHtml += `<div class="empty-card-tip">暂无书签，点击下方添加~</div>`;
-                } else {
-                    cardHtml += `<div class="card-bookmarks-list">`;
-                    items.forEach(item => {
-                        const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
-                        
-                        cardHtml += `
-                            <div class="bookmark-item" 
-                                 onclick="selectBookmarkItemForPreview(${item.id}, this, event)" 
-                                 ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
-                                <div class="bookmark-content-box">
-                                    <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
-                                    ${noteHtml}
-                                </div>
-                                <div class="actions">
-                                    <button class="btn" onclick="openEditSingleBookmarkModal(${item.id}, event)">✏️</button>
-                                    <button class="btn" onclick="deleteBookmark(${item.id}, event)">×</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    cardHtml += `</div>`;
-                }
-
-                cardHtml += `
-                    <div class="card-add-btn" 
-                         ondragover="event.preventDefault()" 
-                         ondragleave="this.classList.remove('drag-over')" 
-                         ondragenter="this.classList.add('drag-over')" 
-                         ondrop="handleDropBookmark(event, '${groupName}')" 
-                         onclick="openBookmarkModalForGroup('${groupName}', event)">
-                        <span>+ 添加网页</span>
-                    </div>
-                `;
-                
-                cardDiv.innerHTML = cardHtml;
-                container.appendChild(cardDiv);
-            });
-
-            updateSidebar();
-        }
-
-        function deleteBookmark(id, event) {
-            if(event) event.stopPropagation();
-            bookmarks = bookmarks.filter(b => b.id !== id);
-            persistState();
-            renderBookmarks(bookmarks);
-        }
-
-        function deleteCategory(groupName, event) {
-            if(event) event.stopPropagation();
-            if (confirm(`确定要删除“${groupName}”这个分类吗？里面的书签也会被移除哦~`)) {
-                categories = categories.filter(c => c !== groupName);
-                bookmarks = bookmarks.filter(b => b.group !== groupName);
-                if (currentCategory === groupName) {
-                    currentCategory = 'all';
-                }
-                persistState();
-                renderBookmarks(bookmarks);
-            }
-        }
-
-        function openCardModal() {
-            document.getElementById('cardModal').style.display = 'flex';
-            document.getElementById('newCardGroupNameName').value = '';
-            setTimeout(() => document.getElementById('newCardGroupNameName').focus(), 50);
-        }
-
-        function openEditCardModal(groupName, event) {
-            if (event) {
-                event.stopPropagation();
-                event.preventDefault();
-            }
-            editingCardOldName = groupName;
-            document.getElementById('editCardModal').style.display = 'flex';
-            const input = document.getElementById('editCardGroupNameInput');
-            input.value = groupName;
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 50);
-        }
-
-        function confirmEditCardGroup() {
-            const newName = document.getElementById('editCardGroupNameInput').value.trim();
-            if (!newName) {
-                alert('分类名称不能为空哦~');
-                return;
-            }
-            if (newName === editingCardOldName) {
-                closeModal();
-                return;
-            }
-            if (getAllCategories().includes(newName)) {
-                alert('该分类名称已存在，请换一个名字吧~');
-                return;
-            }
-
-            if (categories.includes(editingCardOldName)) {
-                categories = categories.map(c => c === editingCardOldName ? newName : c);
-            } else {
-                categories.push(newName);
-            }
-
-            bookmarks.forEach(b => {
-                if (b.group === editingCardOldName) {
-                    b.group = newName;
-                }
-            });
-
-            if (currentCategory === editingCardOldName) {
-                currentCategory = newName;
-            }
-
-            closeModal();
-            persistState();
-            renderBookmarks(bookmarks);
-        }
-
-        function openBookmarkModal() {
-            const targetCat = currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认');
-            document.getElementById('bookmarkModalTitle').innerText = '✨ 添加新书签';
-            document.getElementById('categorySelectionWrapper').style.display = 'block';
-            document.getElementById('bookmarkModal').style.display = 'flex';
-            renderCategoryTags(targetCat);
-            document.getElementById('bookmarkGroup').value = targetCat;
-            document.getElementById('bookmarkTitle').value = '';
-            document.getElementById('bookmarkUrl').value = '';
-            document.getElementById('bookmarkNote').value = '';
-            setTimeout(() => document.getElementById('bookmarkTitle').focus(), 50);
-        }
-
-        function openBookmarkModalForGroup(groupName, event) {
-            if(event) event.stopPropagation();
-            openBookmarkModal();
-            selectTag(groupName, document.querySelector(`#categoryTagsContainer .category-tag[onclick*="${groupName}"]`));
-        }
-
-        function openEditSingleBookmarkModal(id, event) {
-            if (event) {
-                event.stopPropagation();
-                event.preventDefault();
-            }
-            const item = bookmarks.find(b => b.id === id);
-            if (!item) return;
-
-            document.getElementById('editBookmarkId').value = item.id;
-            document.getElementById('editBookmarkTitle').value = item.title;
-            document.getElementById('editBookmarkUrl').value = item.url;
-            document.getElementById('editBookmarkNote').value = item.note || '';
-            document.getElementById('editBookmarkGroup').value = item.group;
-
-            renderEditCategoryTags(item.group);
-            document.getElementById('editBookmarkModal').style.display = 'flex';
-            setTimeout(() => document.getElementById('editBookmarkTitle').focus(), 50);
-        }
-
-        function renderEditCategoryTags(defaultCat = '') {
-            const container = document.getElementById('editCategoryTagsContainer');
-            const cats = getAllCategories();
-            let html = '';
-            cats.forEach(cat => {
-                const isSelected = (cat === defaultCat) ? 'selected' : '';
-                html += `<div class="category-tag ${isSelected}" onclick="selectEditTag('${cat}', this)">📁 ${cat}</div>`;
-            });
-            container.innerHTML = html;
-        }
-
-        function selectEditTag(cat, element) {
-            document.querySelectorAll('#editCategoryTagsContainer .category-tag').forEach(el => el.classList.remove('selected'));
-            if(element) element.classList.add('selected');
-            document.getElementById('editBookmarkGroup').value = cat;
-        }
-
-        function confirmEditBookmark() {
-            const id = parseInt(document.getElementById('editBookmarkId').value);
-            const title = document.getElementById('editBookmarkTitle').value.trim();
-            const url = document.getElementById('editBookmarkUrl').value.trim();
-            const note = document.getElementById('editBookmarkNote').value.trim();
-            const group = document.getElementById('editBookmarkGroup').value.trim() || '未分类';
-
-            if (!title || !url) {
-                alert('请填写完整的网站名称和链接哦~');
-                return;
-            }
-
-            const item = bookmarks.find(b => b.id === id);
-            if (item) {
-                item.title = title;
-                item.url = url;
-                item.note = note;
-                item.group = group;
-
-                if (!categories.includes(group) && !getAllCategories().includes(group)) {
-                    categories.push(group);
-                }
-
-                closeModal();
-                persistState();
-                renderBookmarks(bookmarks);
-
-                if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                    renderFolderModalItems(currentFolderModalGroup);
-                }
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('bookmarkModal').style.display = 'none';
-            document.getElementById('editBookmarkModal').style.display = 'none';
-            document.getElementById('cardModal').style.display = 'none';
-            document.getElementById('editCardModal').style.display = 'none';
-            document.getElementById('noteSubModal').style.display = 'none';
-        }
-
-        function renderCategoryTags(defaultCat = '') {
-            const container = document.getElementById('categoryTagsContainer');
-            const cats = getAllCategories();
-            let html = '';
-            cats.forEach(cat => {
-                const isSelected = (cat === defaultCat) ? 'selected' : '';
-                html += `<div class="category-tag ${isSelected}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
-            });
-            container.innerHTML = html;
-            selectedGroup = defaultCat;
-        }
-
-        function selectTag(cat, element) {
-            document.querySelectorAll('#categoryTagsContainer .category-tag').forEach(el => el.classList.remove('selected'));
-            if(element) element.classList.add('selected');
-            selectedGroup = cat;
-            document.getElementById('bookmarkGroup').value = cat;
-        }
-
-        function saveNewCardGroup() {
-            const groupName = document.getElementById('newCardGroupNameName').value.trim();
-            if (!groupName) {
-                alert('请输入卡片分类名称哦~');
-                return;
-            }
-            if (!categories.includes(groupName)) {
-                categories.push(groupName);
-            }
-            closeModal();
-            persistState();
-            renderBookmarks(bookmarks);
-        }
-
-        function saveBookmark() {
-            const title = document.getElementById('bookmarkTitle').value.trim();
-            const url = document.getElementById('bookmarkUrl').value.trim();
-            const note = document.getElementById('bookmarkNote').value.trim();
-            const typedGroup = document.getElementById('bookmarkGroup').value.trim();
-            const group = typedGroup || selectedGroup || '未分类';
-
-            if (!title || !url) {
-                alert('请填写完整的网站名称和链接哦~');
-                return;
-            }
-
-            if (!categories.includes(group) && !getAllCategories().includes(group)) {
-                categories.push(group);
-            }
-
-            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
-            bookmarks.push({ id: newId, group, title, url, note });
-
-            closeModal();
-            persistState();
-            renderBookmarks(bookmarks);
-
-            if (document.getElementById('folderModalOverlay').style.display === 'flex') {
-                renderFolderModalItems(currentFolderModalGroup);
-            }
         }
     </script>
 </body>
