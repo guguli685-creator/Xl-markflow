@@ -1784,7 +1784,7 @@
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入控制面板最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
@@ -1799,7 +1799,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗 -->
+    <!-- 控制面板弹窗（点击同步时自动生成新的时效密码） -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1807,7 +1807,7 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">点击同步将自动生成并刷新带有时效的新密码</p>
+            <p class="panel-desc">每次点击同步将自动生成带有时效的新密码</p>
 
             <div class="input-row">
                 <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
@@ -1815,7 +1815,7 @@
             </div>
 
             <div class="button-group">
-                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (刷新密码)</button>
+                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步 (生成新密码)</button>
                 <button onclick="publishToPublic(false)" class="btn-danger-ctrl" style="flex: 1;">🔒 销毁</button>
             </div>
         </div>
@@ -3382,7 +3382,7 @@
                         throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
                     }
 
-                    // 恢复时效性随机密码：每次点击同步自动生成全新 8 位密码
+                    // 每次点击同步时，生成带有有时效性的全新 8 位随机密码
                     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
                     let newRandomKey = "";
                     for (let i = 0; i < 8; i++) {
@@ -3430,7 +3430,6 @@
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
-                    // 销毁逻辑：只清除公开仓库中的 Stockage 文件，绝对不删除本地/私有仓库数据
                     const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -3455,11 +3454,8 @@
                         badge.innerText = '已销毁';
                         badge.style.background = '#fdf2f2';
                         badge.style.color = '#c45555';
-                        alert('🔒 公开数据 Stockage 已成功销毁清除！本地数据安全完好。');
+                        alert('🔒 公开数据 Stockage 已成功销毁清除。');
                         closeControlPanelModal();
-                        
-                        // 销毁后自动重新加载本地/私有仓库数据
-                        await manualRestoreFromRepoSilently();
                     } else {
                         alert('销毁公开数据失败。');
                     }
@@ -3469,23 +3465,6 @@
                 badge.innerText = '异常';
                 alert(`操作发生异常: ${e.message}`);
             }
-        }
-
-        async function manualRestoreFromRepoSilently() {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) return;
-            try {
-                const fowRes = await fetch(`https://api.github.com/repos/${repo}/contents/data.fow`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (fowRes.ok) {
-                    const fowData = await fowRes.json();
-                    const fowJson = JSON.parse(decodeURIComponent(escape(atob(fowData.content))));
-                    if (fowJson.categories) localStorage.setItem('markflow_categories', JSON.stringify(fowJson.categories));
-                    if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
-                    if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
-                }
-                window.location.reload(true);
-            } catch (err) {}
         }
 
         async function manualSyncBackupQuietly() {
@@ -3524,886 +3503,534 @@
             }
         }
 
-        async function updateTagsJsonInRepo(newTagsArray) {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) {
-                showToast();
-                return;
+        function formatText(tag) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            if (tag === 'P') {
+                document.execCommand('formatBlock', false, '<p>');
+            } else {
+                document.execCommand('formatBlock', false, `<${tag}>`);
             }
-
-            const filePath = 'tags.json'; 
-            const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
-
-            try {
-                let fileSha = '';
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) {
-                    const info = await getRes.json();
-                    fileSha = info.sha;
-                }
-
-                const bundleData = {
-                    tags: newTagsArray,
-                    updatedAt: new Date().toISOString()
-                };
-                const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
-
-                const putRes = await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: `🏷️ 更新私有仓库中的 tags.json 标签文件`,
-                        content: jsonEncoded,
-                        sha: fileSha || undefined
-                    })
-                });
-
-                if (putRes.ok) {
-                    showToast();
-                } else {
-                    alert('标签文件写入私有仓库失败，请检查 Token 权限。');
-                }
-            } catch (err) {
-                console.error("更新 tags.json 失败", err);
-            }
-        }
-
-        async function manualSyncNotesBj() {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
-            if (!token || !repo) {
-                alert('请先点击右上角☁️图标绑定您的 GitHub 仓库！');
-                openGithubAuthModal();
-                return;
-            }
-
             autoSaveState();
+        }
 
-            const path = 'notes.bj';
-            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+        function execCmd(command) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            document.execCommand(command, false, null);
+            updateStats();
+            autoSaveState();
+        }
 
-            const bjBundle = {
-                notesList,
-                updatedAt: new Date().toISOString()
-            };
-            const bjEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bjBundle, null, 2))));
+        function formatBlock(tag) {
+            const editor = document.getElementById('noteBodyInput');
+            editor.focus();
+            document.execCommand('formatBlock', false, `<${tag}>`);
+            updateStats();
+            autoSaveState();
+        }
 
-            try {
-                let fileSha = '';
-                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (getRes.ok) {
-                    const info = await getRes.json();
-                    fileSha = info.sha;
-                }
-
-                const putRes = await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: '💌 MarkFlow 更新 notes.bj 专属笔记板块',
-                        content: bjEncoded,
-                        sha: fileSha || undefined
-                    })
-                });
-
-                if (!putRes.ok) {
-                    alert('同步写入 notes.bj 失败。');
-                    return;
-                }
-
-                alert('💌 笔记已成功保存至 notes.bj！');
-                showToast();
-            } catch (err) {
-                alert('笔记保存失败。');
+        function handleNoteKeyDown(e) {
+            if (e.key === 'Enter') {
+                document.execCommand('insertParagraph', false, null);
+                e.preventDefault();
             }
+            updateStats();
+            autoSaveState();
         }
 
-        function autoSaveState() {
-            if (currentView === 'notes') {
-                const title = document.getElementById('noteTitleInput').value.trim() || '无标题页面';
-                const content = document.getElementById('noteBodyInput').innerHTML;
-                const note = notesList.find(n => n.id === activeNoteId);
-                if (note) {
-                    note.title = title;
-                    note.content = content;
-                    persistState();
-                    updateSidebar();
-                }
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('collapsed');
-        }
-
-        function toggleBookmarkMenu(e) {
-            e.stopPropagation();
-            bookmarkMenuCollapsed = !bookmarkMenuCollapsed;
-            updateSidebar();
-        }
-
-        function toggleNotesMenuState(e) {
-            e.stopPropagation();
-            notesMenuCollapsed = !notesMenuCollapsed;
-            updateSidebar();
-        }
-
-        function toggleStickerPanel() {
-            const panel = document.getElementById('stickerPanel');
-            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
-        }
-
-        function openSearchFullscreen() {
-            const view = document.getElementById('searchFullscreenView');
-            view.style.display = 'flex';
-            renderFrequentSearchTags();
-            renderFullscreenResults('');
-            renderNotesSearchResults('');
-            document.getElementById('fullscreenSearchInput').focus();
-        }
-
-        function closeSearchFullscreen() {
-            document.getElementById('searchFullscreenView').style.display = 'none';
-            document.getElementById('searchInput').value = '';
-        }
-
-        function toggleFrequentTagsCollapse() {
-            tagsCollapsed = !tagsCollapsed;
-            localStorage.setItem('markflow_tagsCollapsed', tagsCollapsed);
-            updateTagsCollapseView();
-        }
-
-        function updateTagsCollapseView() {
-            const wrapper = document.getElementById('frequentTagsWrapper');
-            const btn = document.getElementById('toggleTagsBtn');
-            if (!wrapper || !btn) return;
-
-            if (frequentSearchTags.length <= 4) {
-                btn.style.display = 'none';
-                wrapper.classList.remove('collapsed');
-                return;
-            }
-
-            btn.style.display = 'inline-flex';
-            if (tagsCollapsed) {
-                wrapper.classList.add('collapsed');
-                btn.innerHTML = `展开 ⌵`;
-                btn.title = `点击展开所有标签`;
-            } else {
-                wrapper.classList.remove('collapsed');
-                btn.innerHTML = `收起 ⌃`;
-                btn.title = `点击收起部分标签`;
-            }
-        }
-
-        function renderFrequentSearchTags() {
-            const wrapper = document.getElementById('frequentTagsWrapper');
-            if (!wrapper) return;
+        function updateStats() {
+            const editor = document.getElementById('noteBodyInput');
+            const text = editor.innerText || '';
+            const charCount = text.replace(/[\n\r\s]/g, '').length;
+            const lineCount = text.split(/\r\n|\r|\n/).length;
             
-            if (frequentSearchTags.length === 0) {
-                wrapper.innerHTML = `<span style="font-size: 12px; color: #b5a49c; font-style: italic;">暂无标签，输入关键词后点击“存为标签”添加</span>`;
-                updateTagsCollapseView();
-                return;
-            }
-            let html = '';
-            frequentSearchTags.forEach(tag => {
-                html += `
-                    <div class="frequent-tag-pill">
-                        <span onclick="clickFrequentTag('${tag}')">${tag}</span>
-                        <span class="frequent-tag-delete" onclick="removeFrequentTag('${tag}', event)" title="删除标签">×</span>
-                    </div>
-                `;
-            });
-            wrapper.innerHTML = html;
-            updateTagsCollapseView();
+            document.getElementById('wordCountText').innerText = `字数: ${charCount} 字`;
+            document.getElementById('lineCountText').innerText = `行数: ${lineCount} 行`;
         }
 
-        function clickFrequentTag(tag) {
-            const input = document.getElementById('fullscreenSearchInput');
-            if (input) {
-                input.value = tag;
-                handleFullscreenSearch();
-            }
-        }
-
-        function addCurrentAsFrequentTag() {
-            const input = document.getElementById('fullscreenSearchInput');
-            if (!input) return;
-            const val = input.value.trim();
-            if (!val) {
-                alert('请先在上方输入框键入您想保存的搜索关键词哦~');
-                return;
-            }
-            if (frequentSearchTags.includes(val)) {
-                alert('该标签已经存在啦！');
-                return;
-            }
-            frequentSearchTags.push(val);
-            renderFrequentSearchTags();
-            updateTagsJsonInRepo(frequentSearchTags);
-        }
-
-        function removeFrequentTag(tag, event) {
-            event.stopPropagation();
-            frequentSearchTags = frequentSearchTags.filter(t => t !== tag);
-            renderFrequentSearchTags();
-            updateTagsJsonInRepo(frequentSearchTags);
-        }
-
-        function switchSearchTab(tabName) {
-            currentSearchTab = tabName;
-            const btnBm = document.getElementById('tabBookmarkBtn');
-            const btnNote = document.getElementById('tabNoteBtn');
-            const panelBm = document.getElementById('panelBookmark');
-            const panelNote = document.getElementById('panelNote');
-
-            if (tabName === 'bookmark') {
-                btnBm.classList.add('active');
-                btnNote.classList.remove('active');
-                panelBm.classList.add('active');
-                panelNote.classList.remove('active');
-            } else {
-                btnNote.classList.add('active');
-                btnBm.classList.remove('active');
-                panelNote.classList.add('active');
-                panelBm.classList.remove('active');
-            }
-        }
-
-        function clearSearchHistoryInput() {
-            document.getElementById('fullscreenSearchInput').value = '';
-            handleFullscreenSearch();
-        }
-
-        function handleFullscreenSearch() {
-            const keyword = document.getElementById('fullscreenSearchInput').value.toLowerCase().trim();
-            renderFullscreenResults(keyword);
-            renderNotesSearchResults(keyword);
-        }
-
-        function renderFullscreenResults(keyword) {
-            const listContainer = document.getElementById('searchResultsList');
-            listContainer.innerHTML = '';
-            const filtered = bookmarks.filter(b => 
-                b.title.toLowerCase().includes(keyword) || 
-                b.group.toLowerCase().includes(keyword) || 
-                b.url.toLowerCase().includes(keyword) ||
-                (b.note && b.note.toLowerCase().includes(keyword))
-            );
-
-            if (filtered.length === 0) {
-                listContainer.innerHTML = `<div class="empty-card-tip">没有找到匹配的书签哦~</div>`;
-                return;
-            }
-
-            filtered.forEach(item => {
-                const safeGroup = item.group.replace(/'/g, "\\'");
-                const noteHtml = item.note ? `<div class="search-result-url" style="color: #8c7368;">📝 备注: ${item.note}</div>` : '';
-                
-                listContainer.innerHTML += `
-                    <div class="search-result-item" onclick="openFolderModalFromSearch('${safeGroup}')" title="点击查看【${item.group}】大文件夹全部网址">
-                        <div style="flex: 1; overflow: hidden; width: 100%;">
-                            <div class="search-result-title">
-                                <a href="${item.url}" target="_blank" onclick="event.stopPropagation()">${item.title}</a>
-                            </div>
-                            <div class="search-result-url">
-                                🔗 <a href="${item.url}" target="_blank" onclick="event.stopPropagation()">${item.url}</a>
-                            </div>
-                            ${noteHtml}
-                        </div>
-                        <span class="search-result-badge" onclick="event.stopPropagation(); openFolderModalFromSearch('${safeGroup}');" title="点击查看该分类全部网址">📁 ${item.group} ↗</span>
-                    </div>
-                `;
-            });
-        }
-
-        function openFolderModalFromSearch(groupName) {
-            openFolderModal(groupName);
-        }
-
-        function renderNotesSearchResults(keyword) {
-            const listContainer = document.getElementById('notesSearchResultsList');
-            listContainer.innerHTML = '';
-            const filtered = notesList.filter(n => n.title.toLowerCase().includes(keyword) || (n.content && n.content.toLowerCase().includes(keyword)));
-
-            if (filtered.length === 0) {
-                listContainer.innerHTML = `<div class="empty-card-tip">没有找到匹配的笔记哦~</div>`;
-                return;
-            }
-
-            filtered.forEach(note => {
-                listContainer.innerHTML += `
-                    <div class="search-result-item" onclick="jumpToNote(${note.id})" style="cursor: pointer;">
-                        <div style="flex: 1; overflow: hidden; width: 100%;">
-                            <div class="search-result-title">${note.title}</div>
-                            <div class="search-result-url">📄 归属：手帐笔记空间</div>
-                        </div>
-                        <span class="search-result-badge">打开笔记 ↗</span>
-                    </div>
-                `;
-            });
-        }
-
-        function jumpToNote(noteId) {
-            closeSearchFullscreen();
-            switchView('notes', noteId);
-        }
-
-        function dragSticker(e, data) {
-            e.dataTransfer.setData('text/plain', data);
-        }
-
-        function dragCustomSticker(e, imgSrc) {
-            e.dataTransfer.setData('image/plain', imgSrc);
-        }
-
-        function allowDrop(e) {
-            e.preventDefault();
-        }
-
-        function handleDropSticker(e) {
-            e.preventDefault();
-            const pageRect = document.getElementById('notesPageBody').getBoundingClientRect();
-            const x = e.clientX - pageRect.left;
-            const y = e.clientY - pageRect.top;
-
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                for (let i = 0; i < e.dataTransfer.files.length; i++) {
-                    const file = e.dataTransfer.files[i];
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            createPlacedSticker(event.target.result, 'image', x + (i * 20), y + (i * 20));
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                }
-                return;
-            }
-
-            const textData = e.dataTransfer.getData('text/plain');
-            const imgData = e.dataTransfer.getData('image/plain');
-
-            if (textData) {
-                createPlacedSticker(textData, 'text', x, y);
-            } else if (imgData) {
-                createPlacedSticker(imgData, 'image', x, y);
-            }
-        }
-
-        function addStickerToNote(content, type) {
-            const body = document.getElementById('notesPageBody');
-            if(!body) return;
-            const pageRect = body.getBoundingClientRect();
-            const x = Math.max(20, pageRect.width / 2 - 50);
-            const y = Math.max(100, pageRect.height / 3);
-            createPlacedSticker(content, type, x, y);
+        function saveActiveNote() {
+            autoSaveState();
             showToast();
         }
 
-        function createPlacedSticker(content, type, x, y, rotateDeg, customWidth) {
-            const span = document.createElement('span');
-            span.className = 'note-sticker-placed';
-            span.style.left = x + 'px';
-            span.style.top = y + 'px';
-            if (rotateDeg) {
-                span.style.transform = `rotate(${rotateDeg}deg)`;
-            }
-
-            if (type === 'text') {
-                span.innerHTML = `<span>${content}</span>`;
-                makeElementInteractive(span);
-                document.getElementById('notesPageBody').appendChild(span);
-                selectSticker(span);
-            } else {
-                const imgObj = new Image();
-                imgObj.src = content;
-                imgObj.onload = function() {
-                    let w = customWidth || imgObj.naturalWidth;
-                    let h = customWidth ? Math.round(customWidth * (imgObj.naturalHeight / imgObj.naturalWidth)) : imgObj.naturalHeight;
-                    const maxBase = 220;
-                    if (!customWidth) {
-                        if (w > h) {
-                            h = Math.round(h * (maxBase / w));
-                            w = maxBase;
-                        } else {
-                            w = Math.round(w * (maxBase / h));
-                            h = maxBase;
-                        }
-                    }
-
-                    span.innerHTML = `
-                        <img src="${content}" alt="sticker" style="width:${w}px; height:${h}px;">
-                        <div class="sticker-rotate-handle"></div>
-                        <div class="sticker-resize-handle"></div>
-                    `;
-                    makeElementInteractive(span);
-                    document.getElementById('notesPageBody').appendChild(span);
-                    selectSticker(span);
-                };
-            }
-        }
-
-        function importCustomSticker(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgSrc = e.target.result;
-                    customStickers.push(imgSrc);
-                    persistState();
-                    renderCustomStickers();
-                    addStickerToNote(imgSrc, 'image');
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function renderCustomStickers() {
-            const container = document.getElementById('customStickersContainer');
-            container.innerHTML = '';
-            customStickers.forEach((imgSrc) => {
-                const img = document.createElement('img');
-                img.className = 'custom-sticker-img';
-                img.src = imgSrc;
-                img.draggable = true;
-                img.ondragstart = (e) => dragCustomSticker(e, imgSrc);
-                img.onclick = () => addStickerToNote(imgSrc, 'image');
-                container.appendChild(img);
-            });
-        }
-
-        function handlePageClick(e) {
-            if (!e.target.closest('.note-sticker-placed')) {
-                clearStickerSelection();
-            }
-        }
-
-        function selectSticker(elm) {
-            clearStickerSelection();
-            selectedStickerElement = elm;
-            elm.classList.add('selected');
-        }
-
-        function clearStickerSelection() {
-            document.querySelectorAll('.note-sticker-placed').forEach(el => el.classList.remove('selected'));
-            selectedStickerElement = null;
-        }
-
-        function initResize(e, handle) {
-            e.stopPropagation();
-            e.preventDefault();
-            const sticker = handle.parentElement;
-            selectSticker(sticker);
-            const img = sticker.querySelector('img');
-            const startX = e.clientX || (e.touches && e.touches[0].clientX);
-            const startWidth = img.offsetWidth;
-
-            const onMouseMove = (moveEvent) => {
-                const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-                const newWidth = Math.max(40, startWidth + (currentX - startX));
-                const ratio = img.naturalHeight / img.naturalWidth;
-                img.style.width = newWidth + 'px';
-                img.style.height = Math.round(newWidth * ratio) + 'px';
-            };
-
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
-                window.removeEventListener('touchmove', onMouseMove);
-                window.removeEventListener('touchend', onMouseUp);
-                autoSaveState();
-            };
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-            window.addEventListener('touchmove', onMouseMove, { passive: false });
-            window.addEventListener('touchend', onMouseUp);
-        }
-
-        function initRotate(e, handle) {
-            e.stopPropagation();
-            e.preventDefault();
-            const sticker = handle.parentElement;
-            selectSticker(sticker);
-            const rect = sticker.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
-            const onMouseMove = (moveEvent) => {
-                const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-                const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
-                const radians = Math.atan2(currentY - centerY, currentX - centerX);
-                let degree = (radians * (180 / Math.PI)) + 90;
-                sticker.style.transform = `rotate(${Math.round(degree)}deg)`;
-            };
-
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
-                window.removeEventListener('touchmove', onMouseMove);
-                window.removeEventListener('touchend', onMouseUp);
-                autoSaveState();
-            };
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-            window.addEventListener('touchmove', onMouseMove, { passive: false });
-            window.addEventListener('touchend', onMouseUp);
-        }
-
-        function makeElementInteractive(elm) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            let longPressTimer = null;
-            let isDragging = false;
-
-            const rotateHandle = elm.querySelector('.sticker-rotate-handle');
-            const resizeHandle = elm.querySelector('.sticker-resize-handle');
-
-            if (rotateHandle) {
-                rotateHandle.onmousedown = (e) => initRotate(e, rotateHandle);
-                rotateHandle.ontouchstart = (e) => initRotate(e, rotateHandle);
-            }
-            if (resizeHandle) {
-                resizeHandle.onmousedown = (e) => initResize(e, resizeHandle);
-                resizeHandle.ontouchstart = (e) => initResize(e, resizeHandle);
-            }
-
-            const handleStart = (clientX, clientY, e) => {
-                if (e.target.classList.contains('sticker-resize-handle') || e.target.classList.contains('sticker-rotate-handle')) return;
-                selectSticker(elm);
-                isDragging = false;
-                pos3 = clientX;
-                pos4 = clientY;
-
-                longPressTimer = setTimeout(() => {
-                    if (!isDragging) {
-                        if (confirm('✨ 要撕掉这个小贴纸吗？')) {
-                            elm.remove();
-                            if (selectedStickerElement === elm) selectedStickerElement = null;
-                            autoSaveState();
-                        }
-                    }
-                }, 600);
-            };
-
-            const handleMove = (clientX, clientY, e) => {
-                const moveDist = Math.hypot(clientX - pos3, clientY - pos4);
-                if (moveDist > 2) {
-                    isDragging = true;
-                    if (longPressTimer) clearTimeout(longPressTimer);
-                }
-
-                pos1 = pos3 - clientX;
-                pos2 = pos4 - clientY;
-                pos3 = clientX;
-                pos4 = clientY;
-
-                elm.style.top = (elm.offsetTop - pos2) + "px";
-                elm.style.left = (elm.offsetLeft - pos1) + "px";
-            };
-
-            const handleEnd = () => {
-                if (longPressTimer) clearTimeout(longPressTimer);
-                autoSaveState();
-            };
-
-            elm.onmousedown = function(e) {
-                if (e.target.classList.contains('sticker-resize-handle') || e.target.classList.contains('sticker-rotate-handle')) return;
-                e.preventDefault();
-                handleStart(e.clientX, e.clientY, e);
-
-                const onMouseMove = (ev) => handleMove(ev.clientX, ev.clientY, ev);
-                const onMouseUp = () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    handleEnd();
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            };
-
-            elm.ontouchstart = function(e) {
-                if (e.target.classList.contains('sticker-resize-handle') || e.target.classList.contains('sticker-rotate-handle')) return;
-                if (e.touches.length === 1) {
-                    const touch = e.touches[0];
-                    handleStart(touch.clientX, touch.clientY, e);
-
-                    const onTouchMove = (ev) => {
-                        if (ev.touches.length === 1) {
-                            ev.preventDefault();
-                            const t = ev.touches[0];
-                            handleMove(t.clientX, t.clientY, ev);
-                        }
-                    };
-
-                    const onTouchEnd = () => {
-                        document.removeEventListener('touchmove', onTouchMove);
-                        document.removeEventListener('touchend', onTouchEnd);
-                        handleEnd();
-                    };
-
-                    document.addEventListener('touchmove', onTouchMove, { passive: false });
-                    document.addEventListener('touchend', onTouchEnd);
-                }
-            };
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === ' ' || e.code === 'Space') {
-                const activeTag = document.activeElement.tagName.toLowerCase();
-                if (activeTag !== 'input' && activeTag !== 'textarea' && !activeTag.isContentEditable) {
-                    if (currentView === 'bookmarks' && previewSelectedBookmarkId) {
-                        e.preventDefault();
-                        const targetItem = bookmarks.find(b => b.id === previewSelectedBookmarkId);
-                        if (targetItem) {
-                            openBookmarkPreviewModal(targetItem.url, targetItem.title);
-                        }
-                        return;
-                    }
-
-                    if (selectedStickerElement) {
-                        const img = selectedStickerElement.querySelector('img');
-                        if (img) {
-                            e.preventDefault();
-                            openImagePreview(img.src);
-                        }
-                    }
-                }
-            }
-
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                if (currentView === 'notes') {
-                    e.preventDefault();
-                    saveActiveNote();
-                }
-            }
-
-            const activeTag = document.activeElement.tagName.toLowerCase();
-            if ((e.key === '+' || e.key === '=') && activeTag !== 'input' && activeTag !== 'textarea' && !activeTag.isContentEditable) {
-                e.preventDefault();
-                if (currentView === 'bookmarks') openBookmarkModal();
-            }
-        });
-
-        function openBookmarkPreviewModal(url, title) {
-            document.getElementById('previewModalTitleText').innerText = title;
-            const iframe = document.getElementById('previewModalIframe');
-            const safeguardBox = document.getElementById('previewSafeguardBox');
-            const safeguardUrl = document.getElementById('previewSafeguardUrl');
-            const externalLinkBtn = document.getElementById('previewExternalLinkBtn');
-
-            safeguardUrl.innerText = url;
-            externalLinkBtn.href = url;
-            safeguardBox.style.display = 'none';
-            iframe.style.display = 'block';
-
-            iframe.src = url;
-
-            let loadTimer = setTimeout(() => {
-                try {
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (!iframeDoc || iframeDoc.body.childElementCount === 0) {
-                        iframe.style.display = 'none';
-                        safeguardBox.style.display = 'flex';
-                    }
-                } catch (err) {
-                    iframe.style.display = 'none';
-                    safeguardBox.style.display = 'flex';
-                }
-            }, 1200);
-
-            iframe.onload = function() {
-                clearTimeout(loadTimer);
-            };
-
-            document.getElementById('bookmarkPreviewModal').style.display = 'flex';
-        }
-
-        function closeBookmarkPreviewModal(e) {
-            if (e.target.id === 'bookmarkPreviewModal') {
-                closeBookmarkPreviewModalDirect();
-            }
-        }
-
-        function closeBookmarkPreviewModalDirect() {
-            document.getElementById('bookmarkPreviewModal').style.display = 'none';
-            document.getElementById('previewModalIframe').src = 'about:blank';
-        }
-
-        function selectBookmarkItemForPreview(id, element, event) {
-            if (event) event.stopPropagation();
-            document.querySelectorAll('.bookmark-item').forEach(el => el.classList.remove('preview-selected'));
-            element.classList.add('preview-selected');
-            previewSelectedBookmarkId = id;
-        }
-
-        function openImagePreview(src) {
-            const modal = document.getElementById('imagePreviewModal');
-            const modalImg = document.getElementById('previewModalImg');
-            if(modalImg) modalImg.src = src;
-            modal.style.display = 'flex';
-        }
-
-        function closeImagePreview() {
-            const modal = document.getElementById('imagePreviewModal');
-            const modalImg = document.getElementById('previewModalImg');
-            modal.style.display = 'none';
-            if(modalImg) modalImg.removeAttribute('src');
-        }
-
-        function getAllCategories() {
-            const set = new Set(categories);
-            bookmarks.forEach(b => set.add(b.group));
-            return Array.from(set);
-        }
-
-        function updateSidebar() {
-            const menuList = document.getElementById('menuList');
-            const cats = getAllCategories();
+        function showToast(msg) {
+            const toast = document.getElementById('toastTip');
+            if (msg) toast.innerText = msg;
+            else toast.innerText = '同步成功';
             
-            const isAllBookmarksActive = (currentView === 'bookmarks' && currentCategory === 'all');
-
-            let html = `
-                <div class="menu-item ${isAllBookmarksActive ? 'active' : ''} ${bookmarkMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('bookmarks', 'all', event)">
-                    <span>🌐 <span class="menu-text">全部书签</span></span>
-                    <span class="arrow" onclick="toggleBookmarkMenu(event)">▾</span>
-                </div>
-                <div class="bookmark-sub-container ${bookmarkMenuCollapsed ? 'collapsed' : ''}">
-            `;
-
-            cats.forEach(cat => {
-                const isCatActive = (currentView === 'bookmarks' && currentCategory === cat);
-                html += `
-                    <div class="sub-menu-item ${isCatActive ? 'active' : ''}" onclick="switchView('bookmarks', '${cat}', event)">
-                        <div class="sub-menu-left">📁 <span class="menu-text">${cat}</span></div>
-                        <button class="sub-delete-btn" onclick="deleteCategory('${cat}', event)" title="删除分类">×</button>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-
-            const isNotesActive = (currentView === 'notes');
-            html += `
-                <div class="menu-item ${isNotesActive ? 'active' : ''} ${notesMenuCollapsed ? 'collapsed-cat' : ''}" onclick="switchView('notes', ${notesList.length > 0 ? notesList[0].id : null}, event)">
-                    <span>📖 <span class="menu-text">手帐笔记</span></span>
-                    <span class="arrow" onclick="toggleNotesMenuState(event)">▾</span>
-                </div>
-                <div class="sub-menu-container ${notesMenuCollapsed ? 'collapsed' : ''}">
-            `;
-
-            notesList.forEach(note => {
-                const isActive = (currentView === 'notes' && activeNoteId === note.id) ? 'active' : '';
-                html += `
-                    <div class="sub-menu-item ${isActive}" onclick="switchView('notes', ${note.id}, event)">
-                        <div class="sub-menu-left">📄 <span class="menu-text">${note.title}</span></div>
-                        <button class="sub-delete-btn" onclick="deleteNote(${note.id}, event)" title="删除页面">×</button>
-                    </div>
-                `;
-            });
-
-            html += `
-                    <button class="add-note-sub-btn" onclick="openNewNoteModal()">+ 新建页面</button>
-                </div>
-            `;
-            
-            menuList.innerHTML = html;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
         }
 
-        function switchView(view, targetId, event) {
+        function deleteNote(id, event) {
             if(event) event.stopPropagation();
-            currentView = view;
-
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('mobile-open');
+            if (notesList.length <= 1) {
+                alert('留一个页面吧~ 至少需要保留一个手帐页面。');
+                return;
             }
-
-            const notesContainer = document.getElementById('notesContainer');
-            const canvasScrollWrapper = document.getElementById('canvasScrollWrapper');
-            const topHeader = document.getElementById('topHeader');
-
-            if (view === 'bookmarks') {
-                if(targetId !== null) currentCategory = targetId;
-                canvasScrollWrapper.style.display = 'block';
-                notesContainer.style.display = 'none';
-                topHeader.style.display = 'flex';
-                applyLayoutModeClass();
-                renderBookmarks(bookmarks);
-            } else {
-                canvasScrollWrapper.style.display = 'none';
-                notesContainer.style.display = 'flex';
-                topHeader.style.display = 'none';
-                
-                if (targetId !== null) {
-                    activeNoteId = targetId;
-                } else if (notesList.length > 0) {
+            if (confirm('确定要删除这个手帐页面吗？')) {
+                notesList = notesList.filter(n => n.id !== id);
+                if (activeNoteId === id) {
                     activeNoteId = notesList[0].id;
                 }
-
-                const currentNoteObj = notesList.find(n => n.id === activeNoteId);
-                if (currentNoteObj) {
-                    document.getElementById('noteTitleInput').value = currentNoteObj.title;
-                    document.getElementById('noteBodyInput').innerHTML = currentNoteObj.content || '<p></p>';
-                } else {
-                    document.getElementById('noteTitleInput').value = '';
-                    document.getElementById('noteBodyInput').innerHTML = '<p></p>';
-                }
-                updateStats();
+                persistState();
+                switchView('notes', activeNoteId);
             }
-            persistState();
-            updateSidebar();
         }
 
-        // 控制面板弹窗相关逻辑
-        function openControlPanelModal() {
-            const token = localStorage.getItem('gh_token');
-            const repo = localStorage.getItem('gh_target_repo');
+        function openNewNoteModal() {
+            document.getElementById('noteSubModal').style.display = 'flex';
+            document.getElementById('newNoteTitleInput').value = '';
+            setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
+        }
 
-            if (!token || !repo) {
-                alert('⚠️ 检测到您尚未绑定私有仓库，请先点击右上角 ☁️ 图标绑定并输入 Token！');
-                openGithubAuthModal();
+        function openFolderModal(groupName) {
+            currentFolderModalGroup = groupName;
+            document.getElementById('folderModalName').innerText = groupName;
+            renderFolderModalItems(groupName);
+            document.getElementById('folderModalOverlay').style.display = 'flex';
+        }
+
+        function closeFolderModal(e) {
+            if (e.target.id === 'folderModalOverlay') {
+                closeFolderModalDirect();
+            }
+        }
+
+        function closeFolderModalDirect() {
+            document.getElementById('folderModalOverlay').style.display = 'none';
+        }
+
+        function renderFolderModalItems(groupName) {
+            const listContainer = document.getElementById('folderModalItemsList');
+            const items = bookmarks.filter(b => b.group === groupName);
+
+            if (items.length === 0) {
+                listContainer.innerHTML = `<div class="empty-card-tip">当前大文件夹暂无内容，点击下方添加~</div>`;
                 return;
             }
 
-            initControlPanelStatus();
-            document.getElementById('controlPanelModal').style.display = 'flex';
+            let html = '';
+            items.forEach(item => {
+                const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
+                html += `
+                    <div class="bookmark-item" onclick="selectBookmarkItemForPreview(${item.id}, this, event)" ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
+                        <div class="bookmark-content-box">
+                            <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
+                            ${noteHtml}
+                        </div>
+                        <div class="actions" style="opacity:1 !important;">
+                            <button class="btn" onclick="openEditSingleBookmarkModal(${item.id}, event)">✏️</button>
+                            <button class="btn" onclick="deleteBookmark(${item.id}, event); renderFolderModalItems('${groupName}');">×</button>
+                        </div>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
         }
 
-        function closeControlPanelModal(e) {
-            if (!e || e.target.id === 'controlPanelModal') {
-                document.getElementById('controlPanelModal').style.display = 'none';
+        function handleDropBookmark(e, groupName) {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetEl = e.currentTarget;
+            targetEl.classList.remove('drag-over', 'drag-over-card');
+
+            let url = '';
+            let title = '';
+
+            const uriList = e.dataTransfer.getData('text/uri-list');
+            if (uriList) {
+                url = uriList.split('\n')[0].trim();
+            }
+
+            if (!url) {
+                const plainText = e.dataTransfer.getData('text/plain');
+                if (plainText && (plainText.startsWith('http://') || plainText.startsWith('https://'))) {
+                    url = plainText.trim();
+                }
+            }
+
+            const htmlData = e.dataTransfer.getData('text/html');
+            if (htmlData) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlData, 'text/html');
+                const aTag = doc.querySelector('a');
+                if (aTag) {
+                    if (!url) url = aTag.href;
+                    title = aTag.textContent.trim();
+                }
+            }
+
+            if (!url) {
+                const fallbackText = e.dataTransfer.getData('text/plain');
+                if (fallbackText) {
+                    if (fallbackText.startsWith('http')) {
+                        url = fallbackText;
+                        title = fallbackText;
+                    } else {
+                        title = fallbackText;
+                        url = 'https://' + fallbackText;
+                    }
+                }
+            }
+
+            if (!url) {
+                alert('未能识别到有效的网址链接，请尝试直接点击“+ 添加网页”输入。');
+                return;
+            }
+
+            if (!title) {
+                try {
+                    const parsedObj = new URL(url);
+                    title = parsedObj.hostname;
+                } catch(err) {
+                    title = url;
+                }
+            }
+
+            if (!categories.includes(groupName) && !getAllCategories().includes(groupName)) {
+                categories.push(groupName);
+            }
+
+            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
+            bookmarks.push({
+                id: newId,
+                group: groupName,
+                title: title,
+                url: url,
+                note: ''
+            });
+
+            persistState();
+            renderBookmarks(bookmarks);
+            showToast(`✨ 快捷添加成功：${title}`);
+
+            if (document.getElementById('folderModalOverlay').style.display === 'flex') {
+                renderFolderModalItems(groupName);
             }
         }
 
-        function initControlPanelStatus() {
-            const token = localStorage.getItem('gh_token');
-            const privateRepo = localStorage.getItem('gh_target_repo');
-            const badge = document.getElementById('pubStatusBadge');
+        function renderBookmarks(data) {
+            const container = document.getElementById('bookmarkContainer');
+            container.innerHTML = '';
 
-            if (!token || !privateRepo) {
-                if (badge) { badge.innerText = '未登录'; badge.style.background = '#fdf2f2'; badge.style.color = '#c45555'; }
+            const catsToRender = currentCategory === 'all' ? getAllCategories() : [currentCategory];
+
+            if (catsToRender.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 120px 20px; color:#b5a49c; font-size:15px; font-style:italic;">✨ 暂无书签分类，点击右上角 “+” 添加书签、新建卡片，或从左侧从仓库恢复网页。</div>`;
+                updateSidebar();
+                return;
+            }
+            
+            catsToRender.forEach((groupName) => {
+                const items = data.filter(b => b.group === groupName);
+
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card-group';
+
+                cardDiv.addEventListener('dragover', (e) => e.preventDefault());
+                cardDiv.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    cardDiv.classList.add('drag-over-card');
+                });
+                cardDiv.addEventListener('dragleave', (e) => {
+                    if (!cardDiv.contains(e.relatedTarget)) {
+                        cardDiv.classList.remove('drag-over-card');
+                    }
+                });
+                cardDiv.addEventListener('drop', (e) => {
+                    handleDropBookmark(e, groupName);
+                });
+
+                let cardHtml = `
+                    <div class="card-group-title">
+                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" title="点击展开大文件夹展开视图" onclick="openFolderModal('${groupName}')">📁 ${groupName}</span>
+                        <div class="card-group-right">
+                            <span class="count-badge">${items.length}</span>
+                            <button class="card-edit-btn" onclick="openEditCardModal('${groupName}', event)" title="编辑分类名称">✏️</button>
+                            <button class="delete-card-btn" onclick="deleteCategory('${groupName}', event)" title="删除该卡片分类">×</button>
+                        </div>
+                    </div>
+                `;
+                
+                if (items.length === 0) {
+                    cardHtml += `<div class="empty-card-tip">暂无书签，点击下方添加~</div>`;
+                } else {
+                    cardHtml += `<div class="card-bookmarks-list">`;
+                    items.forEach(item => {
+                        const noteHtml = item.note ? `<div class="bookmark-note-text">📝 ${item.note}</div>` : '';
+                        
+                        cardHtml += `
+                            <div class="bookmark-item" 
+                                 onclick="selectBookmarkItemForPreview(${item.id}, this, event)" 
+                                 ondblclick="openBookmarkPreviewModal('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
+                                <div class="bookmark-content-box">
+                                    <a href="${item.url}" class="bookmark-link" target="_blank">${item.title}</a>
+                                    ${noteHtml}
+                                </div>
+                                <div class="actions">
+                                    <button class="btn" onclick="openEditSingleBookmarkModal(${item.id}, event)">✏️</button>
+                                    <button class="btn" onclick="deleteBookmark(${item.id}, event)">×</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    cardHtml += `</div>`;
+                }
+
+                cardHtml += `
+                    <div class="card-add-btn" 
+                         ondragover="event.preventDefault()" 
+                         ondragleave="this.classList.remove('drag-over')" 
+                         ondragenter="this.classList.add('drag-over')" 
+                         ondrop="handleDropBookmark(event, '${groupName}')" 
+                         onclick="openBookmarkModalForGroup('${groupName}', event)">
+                        <span>+ 添加网页</span>
+                    </div>
+                `;
+                
+                cardDiv.innerHTML = cardHtml;
+                container.appendChild(cardDiv);
+            });
+
+            updateSidebar();
+        }
+
+        function deleteBookmark(id, event) {
+            if(event) event.stopPropagation();
+            bookmarks = bookmarks.filter(b => b.id !== id);
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        function deleteCategory(groupName, event) {
+            if(event) event.stopPropagation();
+            if (confirm(`确定要删除“${groupName}”这个分类吗？里面的书签也会被移除哦~`)) {
+                categories = categories.filter(c => c !== groupName);
+                bookmarks = bookmarks.filter(b => b.group !== groupName);
+                if (currentCategory === groupName) {
+                    currentCategory = 'all';
+                }
+                persistState();
+                renderBookmarks(bookmarks);
+            }
+        }
+
+        function openCardModal() {
+            document.getElementById('cardModal').style.display = 'flex';
+            document.getElementById('newCardGroupNameName').value = '';
+            setTimeout(() => document.getElementById('newCardGroupNameName').focus(), 50);
+        }
+
+        function openEditCardModal(groupName, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            editingCardOldName = groupName;
+            document.getElementById('editCardModal').style.display = 'flex';
+            const input = document.getElementById('editCardGroupNameInput');
+            input.value = groupName;
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 50);
+        }
+
+        function confirmEditCardGroup() {
+            const newName = document.getElementById('editCardGroupNameInput').value.trim();
+            if (!newName) {
+                alert('分类名称不能为空哦~');
+                return;
+            }
+            if (newName === editingCardOldName) {
+                closeModal();
+                return;
+            }
+            if (getAllCategories().includes(newName)) {
+                alert('该分类名称已存在，请换一个名字吧~');
+                return;
+            }
+
+            if (categories.includes(editingCardOldName)) {
+                categories = categories.map(c => c === editingCardOldName ? newName : c);
             } else {
-                let savedKey = localStorage.getItem('markflow_pub_key');
-                if (!savedKey) {
-                    savedKey = "MarkFlow2026";
-                    localStorage.setItem('markflow_pub_key', savedKey);
+                categories.push(newName);
+            }
+
+            bookmarks.forEach(b => {
+                if (b.group === editingCardOldName) {
+                    b.group = newName;
                 }
-                document.getElementById('publicRandomKeyInput').value = savedKey;
-                if (badge) {
-                    badge.innerText = '已就绪'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
+            });
+
+            if (currentCategory === editingCardOldName) {
+                currentCategory = newName;
+            }
+
+            closeModal();
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        function openBookmarkModal() {
+            const targetCat = currentCategory !== 'all' ? currentCategory : (getAllCategories()[0] || '默认');
+            document.getElementById('bookmarkModalTitle').innerText = '✨ 添加新书签';
+            document.getElementById('categorySelectionWrapper').style.display = 'block';
+            document.getElementById('bookmarkModal').style.display = 'flex';
+            renderCategoryTags(targetCat);
+            document.getElementById('bookmarkGroup').value = targetCat;
+            document.getElementById('bookmarkTitle').value = '';
+            document.getElementById('bookmarkUrl').value = '';
+            document.getElementById('bookmarkNote').value = '';
+            setTimeout(() => document.getElementById('bookmarkTitle').focus(), 50);
+        }
+
+        function openBookmarkModalForGroup(groupName, event) {
+            if(event) event.stopPropagation();
+            openBookmarkModal();
+            selectTag(groupName, document.querySelector(`#categoryTagsContainer .category-tag[onclick*="${groupName}"]`));
+        }
+
+        function openEditSingleBookmarkModal(id, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const item = bookmarks.find(b => b.id === id);
+            if (!item) return;
+
+            document.getElementById('editBookmarkId').value = item.id;
+            document.getElementById('editBookmarkTitle').value = item.title;
+            document.getElementById('editBookmarkUrl').value = item.url;
+            document.getElementById('editBookmarkNote').value = item.note || '';
+            document.getElementById('editBookmarkGroup').value = item.group;
+
+            renderEditCategoryTags(item.group);
+            document.getElementById('editBookmarkModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('editBookmarkTitle').focus(), 50);
+        }
+
+        function renderEditCategoryTags(defaultCat = '') {
+            const container = document.getElementById('editCategoryTagsContainer');
+            const cats = getAllCategories();
+            let html = '';
+            cats.forEach(cat => {
+                const isSelected = (cat === defaultCat) ? 'selected' : '';
+                html += `<div class="category-tag ${isSelected}" onclick="selectEditTag('${cat}', this)">📁 ${cat}</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function selectEditTag(cat, element) {
+            document.querySelectorAll('#editCategoryTagsContainer .category-tag').forEach(el => el.classList.remove('selected'));
+            if(element) element.classList.add('selected');
+            document.getElementById('editBookmarkGroup').value = cat;
+        }
+
+        function confirmEditBookmark() {
+            const id = parseInt(document.getElementById('editBookmarkId').value);
+            const title = document.getElementById('editBookmarkTitle').value.trim();
+            const url = document.getElementById('editBookmarkUrl').value.trim();
+            const note = document.getElementById('editBookmarkNote').value.trim();
+            const group = document.getElementById('editBookmarkGroup').value.trim() || '未分类';
+
+            if (!title || !url) {
+                alert('请填写完整的网站名称和链接哦~');
+                return;
+            }
+
+            const item = bookmarks.find(b => b.id === id);
+            if (item) {
+                item.title = title;
+                item.url = url;
+                item.note = note;
+                item.group = group;
+
+                if (!categories.includes(group) && !getAllCategories().includes(group)) {
+                    categories.push(group);
+                }
+
+                closeModal();
+                persistState();
+                renderBookmarks(bookmarks);
+
+                if (document.getElementById('folderModalOverlay').style.display === 'flex') {
+                    renderFolderModalItems(currentFolderModalGroup);
                 }
             }
         }
 
-        function copyPublicKey() {
-            const val = document.getElementById('publicRandomKeyInput').value;
-            if (!val) { alert('当前没有可复制的密码'); return; }
-            navigator.clipboard.writeText(val);
-            alert('📋 访问密码已复制到剪贴板！');
+        function closeModal() {
+            document.getElementById('bookmarkModal').style.display = 'none';
+            document.getElementById('editBookmarkModal').style.display = 'none';
+            document.getElementById('cardModal').style.display = 'none';
+            document.getElementById('editCardModal').style.display = 'none';
+            document.getElementById('noteSubModal').style.display = 'none';
+        }
+
+        function renderCategoryTags(defaultCat = '') {
+            const container = document.getElementById('categoryTagsContainer');
+            const cats = getAllCategories();
+            let html = '';
+            cats.forEach(cat => {
+                const isSelected = (cat === defaultCat) ? 'selected' : '';
+                html += `<div class="category-tag ${isSelected}" onclick="selectTag('${cat}', this)">📁 ${cat}</div>`;
+            });
+            container.innerHTML = html;
+            selectedGroup = defaultCat;
+        }
+
+        function selectTag(cat, element) {
+            document.querySelectorAll('#categoryTagsContainer .category-tag').forEach(el => el.classList.remove('selected'));
+            if(element) element.classList.add('selected');
+            selectedGroup = cat;
+            document.getElementById('bookmarkGroup').value = cat;
+        }
+
+        function saveNewCardGroup() {
+            const groupName = document.getElementById('newCardGroupNameName').value.trim();
+            if (!groupName) {
+                alert('请输入卡片分类名称哦~');
+                return;
+            }
+            if (!categories.includes(groupName)) {
+                categories.push(groupName);
+            }
+            closeModal();
+            persistState();
+            renderBookmarks(bookmarks);
+        }
+
+        function saveBookmark() {
+            const title = document.getElementById('bookmarkTitle').value.trim();
+            const url = document.getElementById('bookmarkUrl').value.trim();
+            const note = document.getElementById('bookmarkNote').value.trim();
+            const typedGroup = document.getElementById('bookmarkGroup').value.trim();
+            const group = typedGroup || selectedGroup || '未分类';
+
+            if (!title || !url) {
+                alert('请填写完整的网站名称和链接哦~');
+                return;
+            }
+
+            if (!categories.includes(group) && !getAllCategories().includes(group)) {
+                categories.push(group);
+            }
+
+            const newId = bookmarks.length > 0 ? Math.max(...bookmarks.map(b => b.id)) + 1 : 1;
+            bookmarks.push({ id: newId, group, title, url, note });
+
+            closeModal();
+            persistState();
+            renderBookmarks(bookmarks);
+
+            if (document.getElementById('folderModalOverlay').style.display === 'flex') {
+                renderFolderModalItems(currentFolderModalGroup);
+            }
         }
     </script>
 </body>
