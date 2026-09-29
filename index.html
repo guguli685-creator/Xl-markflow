@@ -1337,6 +1337,129 @@
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
 
+        /* 控制面板弹窗样式 */
+        .control-panel-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(92, 75, 67, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 350;
+        }
+        .panel-card {
+            background: #fff8f3;
+            border: 2px solid #f2dfd6;
+            border-radius: 24px;
+            padding: 30px 24px;
+            width: 90%;
+            max-width: 380px;
+            box-shadow: 0 16px 40px rgba(210, 185, 170, 0.22);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #ecd5cc;
+            padding-bottom: 12px;
+        }
+        .panel-header h3 {
+            color: #b56565;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+        .status-badge {
+            font-size: 11px;
+            background: #faede6;
+            color: #d48383;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .panel-desc {
+            font-size: 12px;
+            color: #8c7368;
+            line-height: 1.5;
+        }
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .panel-input {
+            background: #fff;
+            border: 1.5px solid #ecd5cc;
+            padding: 11px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #b56565;
+            text-align: center;
+            flex: 1;
+            outline: none;
+            letter-spacing: 1px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .btn-copy {
+            background: #fffbf8;
+            border: 1.5px solid #ecd5cc;
+            color: #8c7368;
+            padding: 11px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover { background: #faede6; color: #b56565; border-color: #d48383; }
+
+        .btn-confirm {
+            background: #f4d6cc;
+            color: #a34848;
+            border: 1.5px solid #ecd5cc;
+            box-shadow: 0 4px 12px rgba(212, 131, 131, 0.15);
+            padding: 11px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-confirm:hover { background: #e2ab9d; color: #fff; transform: translateY(-1px); }
+
+        .btn-danger-ctrl {
+            background: #fffbf8;
+            color: #c45555;
+            border: 1.5px solid #f0ded6;
+            padding: 11px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-danger-ctrl:hover { background: #fdf2f2; border-color: #d48383; color: #a33838; transform: translateY(-1px); }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
         @media (max-width: 768px) {
             body { flex-direction: column; }
             .mobile-header { display: flex; }
@@ -1519,6 +1642,10 @@
         <div id="menuList"></div>
 
         <div class="sidebar-bottom-actions">
+            <!-- 控制面板菜单按钮（点击打开弹窗，自动检测私有仓库登录状态） -->
+            <button class="sidebar-action-btn" onclick="openControlPanelModal()" title="控制面板">
+                🌐 <span>控制面板</span>
+            </button>
             <button class="sidebar-action-btn sync-primary" onclick="manualSyncBackup()" title="手动点击保存备份绝对命令">
                 💾 <span>手动备份到仓库</span>
             </button>
@@ -1638,6 +1765,28 @@
                     <span id="wordCountText">字数: 0 字</span>
                     <span id="lineCountText">行数: 0 行</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制面板弹窗 -->
+    <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
+        <div class="panel-card" onclick="event.stopPropagation()">
+            <div class="panel-header">
+                <h3>🌐 控制面板</h3>
+                <span id="pubStatusBadge" class="status-badge">检测中</span>
+            </div>
+            
+            <p class="panel-desc">随机生成密码 (8位数字、英文、罗马符号)</p>
+
+            <div class="input-row">
+                <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步自动生成 Key" readonly>
+                <button onclick="copyPublicKey()" class="btn-copy" title="复制 Key">📋</button>
+            </div>
+
+            <div class="button-group">
+                <button onclick="publishToPublic(true)" class="btn-confirm" style="flex: 1;">🚀 同步</button>
+                <button onclick="publishToPublic(false)" class="btn-danger-ctrl" style="flex: 1;">🔒 销毁</button>
             </div>
         </div>
     </div>
@@ -1842,6 +1991,7 @@
             renderCustomStickers();
             await fetchTagsFromJsonRepo();
             switchView(currentView, currentCategory, null);
+            initControlPanelStatus();
 
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -1867,6 +2017,9 @@
                         if (fowJson.customStickers) {
                             customStickers = fowJson.customStickers;
                             localStorage.setItem('markflow_customStickers', JSON.stringify(customStickers));
+                        }
+                        if (fowJson.pubKey) {
+                            localStorage.setItem('markflow_pub_key', fowJson.pubKey);
                         }
                         hasUpdate = true;
                     }
@@ -2147,6 +2300,7 @@
                     if (fowJson.categories) localStorage.setItem('markflow_categories', JSON.stringify(fowJson.categories));
                     if (fowJson.bookmarks) localStorage.setItem('markflow_bookmarks', JSON.stringify(fowJson.bookmarks));
                     if (fowJson.customStickers) localStorage.setItem('markflow_customStickers', JSON.stringify(fowJson.customStickers));
+                    if (fowJson.pubKey) localStorage.setItem('markflow_pub_key', fowJson.pubKey);
                 }
 
                 const bjRes = await fetch(`https://api.github.com/repos/${repo}/contents/notes.bj`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -2182,6 +2336,7 @@
 
             const bundleData = {
                 categories, bookmarks, customStickers,
+                pubKey: localStorage.getItem('markflow_pub_key') || '',
                 updatedAt: new Date().toISOString()
             };
             const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
@@ -2190,8 +2345,7 @@
                 let fileSha = '';
                 const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (getRes.ok) {
-                    const info = await getRes.json();
-                    fileSha = info.sha;
+                    fileSha = (await getRes.json()).sha;
                 }
                 
                 const putRes = await fetch(url, {
@@ -3015,17 +3169,18 @@
             }
 
             const notesContainer = document.getElementById('notesContainer');
+            const canvasScrollWrapper = document.getElementById('canvasScrollWrapper');
             const topHeader = document.getElementById('topHeader');
 
             if (view === 'bookmarks') {
                 if(targetId !== null) currentCategory = targetId;
-                document.getElementById('canvasScrollWrapper').style.display = 'block';
+                canvasScrollWrapper.style.display = 'block';
                 notesContainer.style.display = 'none';
                 topHeader.style.display = 'flex';
                 applyLayoutModeClass();
                 renderBookmarks(bookmarks);
             } else {
-                document.getElementById('canvasScrollWrapper').style.display = 'none';
+                canvasScrollWrapper.style.display = 'none';
                 notesContainer.style.display = 'flex';
                 topHeader.style.display = 'none';
                 
@@ -3047,6 +3202,207 @@
             }
             persistState();
             updateSidebar();
+        }
+
+        // 控制面板弹窗相关逻辑（自动检测 Token）
+        function openControlPanelModal() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+
+            if (!token || !repo) {
+                alert('⚠️ 检测到您尚未绑定私有仓库，请先点击右上角 ☁️ 图标绑定并输入 Token！');
+                openGithubAuthModal();
+                return;
+            }
+
+            initControlPanelStatus();
+            document.getElementById('controlPanelModal').style.display = 'flex';
+        }
+
+        function closeControlPanelModal(e) {
+            if (!e || e.target.id === 'controlPanelModal') {
+                document.getElementById('controlPanelModal').style.display = 'none';
+            }
+        }
+
+        function initControlPanelStatus() {
+            const token = localStorage.getItem('gh_token');
+            const privateRepo = localStorage.getItem('gh_target_repo');
+            const badge = document.getElementById('pubStatusBadge');
+
+            if (!token || !privateRepo) {
+                if (badge) { badge.innerText = '未登录'; badge.style.background = '#fdf2f2'; badge.style.color = '#c45555'; }
+            } else {
+                const savedKey = localStorage.getItem('markflow_pub_key');
+                if (savedKey && badge) {
+                    document.getElementById('publicRandomKeyInput').value = savedKey;
+                    badge.innerText = '已公开'; badge.style.background = '#e1f5fe'; badge.style.color = '#0288d1';
+                } else if (badge) {
+                    badge.innerText = '已就绪';
+                }
+            }
+        }
+
+        function copyPublicKey() {
+            const val = document.getElementById('publicRandomKeyInput').value;
+            if (!val) { alert('当前没有可复制的 Key'); return; }
+            navigator.clipboard.writeText(val);
+            alert('📋 访问 Key 已复制到剪贴板！');
+        }
+
+        async function publishToPublic(isPublic) {
+            const token = localStorage.getItem('gh_token');
+            const privateRepo = localStorage.getItem('gh_target_repo');
+            const badge = document.getElementById('pubStatusBadge');
+            
+            if (!token || !privateRepo) {
+                alert('未检测到登录状态，请先在主项目中绑定私有仓库！');
+                openGithubAuthModal();
+                return;
+            }
+
+            let publicRepo = localStorage.getItem('gh_public_repo');
+            if (!publicRepo) {
+                const parts = privateRepo.split('/');
+                if (parts.length === 2) {
+                    publicRepo = `${parts[0]}/${parts[1].replace('-private', '')}-public`;
+                } else {
+                    publicRepo = prompt("请输入您的【公开仓库名】(格式: 用户名/公开仓库名):");
+                }
+                if (!publicRepo) return;
+                localStorage.setItem('gh_public_repo', publicRepo);
+            }
+
+            try {
+                badge.innerText = '提交中...';
+
+                if (isPublic) {
+                    // 自动生成 8 位随机密码：数字、英文、罗马符号
+                    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ";
+                    let randomKey = "";
+                    for (let i = 0; i < 8; i++) {
+                        randomKey += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+
+                    document.getElementById('publicRandomKeyInput').value = randomKey;
+                    localStorage.setItem('markflow_pub_key', randomKey);
+
+                    // 1. 同步 Key 和数据到私有仓库，保证私有与公开密码一致
+                    await manualSyncBackupQuietly();
+
+                    // 2. 将所有数据同步到公开仓库的 Stockage 文件中
+                    const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
+                    let stockageSha = "";
+                    const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (getRes.ok) stockageSha = (await getRes.json()).sha;
+
+                    const publicBundle = {
+                        categories,
+                        bookmarks,
+                        notesList,
+                        customStickers,
+                        pubKey: randomKey,
+                        updatedAt: new Date().toISOString()
+                    };
+                    const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(publicBundle, null, 2))));
+
+                    const putRes = await fetch(stockageUrl, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: '🚀 同步全量书签与笔记到公开仓库 Stockage (MarkFlow)',
+                            content: encodedContent,
+                            sha: stockageSha || undefined
+                        })
+                    });
+
+                    if (putRes.ok) {
+                        badge.innerText = '已公开';
+                        badge.style.background = '#e1f5fe';
+                        badge.style.color = '#0288d1';
+                        alert(`✨ 数据已成功同步到公开仓库 Stockage！\n🔑 8位混合随机访问 Key: ${randomKey}`);
+                        closeControlPanelModal();
+                    } else {
+                        badge.innerText = '同步失败';
+                        alert('同步到公开仓库失败。');
+                    }
+                } else {
+                    // 销毁逻辑：清空公开仓库目录下的 Stockage 文件
+                    const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
+                    let stockageSha = "";
+                    const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (getRes.ok) stockageSha = (await getRes.json()).sha;
+
+                    if (!stockageSha) {
+                        alert('公开仓库中未检测到 Stockage 文件。');
+                        badge.innerText = '已就绪';
+                        return;
+                    }
+
+                    const delRes = await fetch(stockageUrl, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: '🔒 销毁公网公开数据 Stockage',
+                            sha: stockageSha
+                        })
+                    });
+
+                    if (delRes.ok) {
+                        document.getElementById('publicRandomKeyInput').value = "";
+                        localStorage.removeItem('markflow_pub_key');
+                        await manualSyncBackupQuietly();
+                        badge.innerText = '已销毁';
+                        badge.style.background = '#fdf2f2';
+                        badge.style.color = '#c45555';
+                        alert('🔒 公开数据 Stockage 已成功销毁清除。');
+                        closeControlPanelModal();
+                    } else {
+                        badge.innerText = '销毁失败';
+                        alert('销毁公开数据失败。');
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                badge.innerText = '异常';
+                alert('操作发生异常。');
+            }
+        }
+
+        async function manualSyncBackupQuietly() {
+            const token = localStorage.getItem('gh_token');
+            const repo = localStorage.getItem('gh_target_repo');
+            if (!token || !repo) return;
+
+            const path = 'data.fow';
+            const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+            const bundleData = {
+                categories, bookmarks, customStickers,
+                pubKey: localStorage.getItem('markflow_pub_key') || '',
+                updatedAt: new Date().toISOString()
+            };
+            const jsonEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(bundleData, null, 2))));
+
+            try {
+                let fileSha = '';
+                const getRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (getRes.ok) {
+                    fileSha = (await getRes.json()).sha;
+                }
+                
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '✨ 自动同步 Key 至私有仓库 data.fow',
+                        content: jsonEncoded,
+                        sha: fileSha || undefined
+                    })
+                });
+            } catch(err) {
+                console.error("静默同步 Key 失败", err);
+            }
         }
 
         function formatText(tag) {
@@ -3131,19 +3487,6 @@
             document.getElementById('noteSubModal').style.display = 'flex';
             document.getElementById('newNoteTitleInput').value = '';
             setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
-        }
-
-        function confirmCreateNote() {
-            const title = document.getElementById('newNoteTitleInput').value.trim();
-            if (!title) {
-                alert('请输入页面名称哦~');
-                return;
-            }
-            const newId = notesList.length > 0 ? Math.max(...notesList.map(n => n.id)) + 1 : 1;
-            notesList.push({ id: newId, title: title, content: `<p></p>` });
-            closeModal();
-            persistState();
-            switchView('notes', newId);
         }
 
         function openFolderModal(groupName) {
