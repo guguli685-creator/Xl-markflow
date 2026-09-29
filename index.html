@@ -1358,7 +1358,7 @@
         .modal-btn.confirm { background: #f4d6cc; color: #a34848; }
         .modal-btn.confirm:hover { background: #e2ab9d; color: #fff; }
 
-        /* 控制面板弹窗样式 */
+        /* 控制面板弹窗样式 (保留随机密码，去除时效) */
         .control-panel-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(92, 75, 67, 0.45);
@@ -1635,7 +1635,6 @@
     </style>
 </head>
 <body>
-
     <div class="mobile-header">
         <h2>✨ MarkFlow</h2>
         <div class="mobile-header-actions">
@@ -1796,7 +1795,7 @@
     <div class="modal-overlay" id="visitorAuthModal">
         <div class="modal" onclick="event.stopPropagation()">
             <h3>🔑 访客密码免Token同步</h3>
-            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员最新生成的 **时效访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
+            <p style="font-size: 13px; color: #8c7368; line-height: 1.4;">输入管理员生成的 **访问密码 (Key)** 即可免登录拉取同步云端书签与笔记！</p>
             
             <div style="display:flex; flex-direction:column; gap:6px; margin-top: 6px;">
                 <label class="category-selector-label">访问密码 (Key)：</label>
@@ -1811,7 +1810,7 @@
         </div>
     </div>
 
-    <!-- 控制面板弹窗（点击同步时自动生成新的时效密码） -->
+    <!-- 控制面板弹窗（保留随机密码，去除时效限制） -->
     <div class="control-panel-modal-overlay" id="controlPanelModal" onclick="closeControlPanelModal(event)">
         <div class="panel-card" onclick="event.stopPropagation()">
             <div class="panel-header">
@@ -1819,7 +1818,7 @@
                 <span id="pubStatusBadge" class="status-badge">检测中</span>
             </div>
             
-            <p class="panel-desc">每次点击同步将自动生成带有时效的新密码</p>
+            <p class="panel-desc">点击同步将自动生成随机访问密码，长期有效无时效限制</p>
 
             <div class="input-row">
                 <input type="text" id="publicRandomKeyInput" class="panel-input" placeholder="点击同步生成 Key" readonly>
@@ -2092,7 +2091,6 @@
             }
         });
 
-        // 辅助函数：安全获取网站 Favicon 缩略图
         function getFaviconUrl(url) {
             try {
                 const domain = new URL(url).hostname;
@@ -2102,7 +2100,6 @@
             }
         }
 
-        // 图片加载失败降级处理
         function handleFaviconError(imgEl) {
             imgEl.style.display = 'none';
         }
@@ -2152,8 +2149,7 @@
                         frequentSearchTags = jsonContent.tags;
                     }
                 }
-            } catch (err) {
-            }
+            } catch (err) {}
         }
 
         function persistState() {
@@ -2304,7 +2300,6 @@
             document.getElementById('githubAuthModal').style.display = 'none';
         }
 
-        // 访客密码免Token同步弹窗控制
         function openVisitorAuthModal() {
             document.getElementById('visitorAuthModal').style.display = 'flex';
             document.getElementById('visitorKeyInput').value = '';
@@ -2332,7 +2327,7 @@
                 const jsonContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
 
                 if (!jsonContent.pubKey || jsonContent.pubKey !== enteredKey) {
-                    alert('❌ 访问密码错误或已失效，无法同步！');
+                    alert('❌ 访问密码错误，无法同步！');
                     return;
                 }
 
@@ -3324,7 +3319,7 @@
             updateSidebar();
         }
 
-        // 控制面板弹窗相关逻辑（修正：管理页面重新加载/销毁时，不销毁整体页面框架，仅清理公开状态并重新拉取私人数据）
+        // 控制面板逻辑：保留随机密码生成，去除一切时效限制
         function openControlPanelModal() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_target_repo');
@@ -3449,14 +3444,13 @@
                         badge.innerText = '已公开';
                         badge.style.background = '#e1f5fe';
                         badge.style.color = '#0288d1';
-                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成全新时效访问密码: ${newRandomKey}`);
+                        alert(`✨ 数据已成功同步到公开仓库！\n🔑 已生成永久随机访问密码: ${newRandomKey}`);
                         closeControlPanelModal();
                     } else {
                         const errPutJson = await putRes.json();
                         throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
-                    // 销毁公开数据：不销毁管理页本身，只清除公开书签缓存/公开状态，并重新加载私人仓库数据
                     const stockageUrl = `https://api.github.com/repos/${FIXED_PUBLIC_REPO}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -3473,7 +3467,6 @@
                         });
                     }
 
-                    // 重置公开缓存状态，保留页面框架，重新从私有仓库拉取并加载最新私人数据
                     localStorage.removeItem('markflow_pub_key');
                     badge.innerText = '已清除公开状态';
                     badge.style.background = '#fdf2f2';
@@ -3638,6 +3631,19 @@
             document.getElementById('noteSubModal').style.display = 'flex';
             document.getElementById('newNoteTitleInput').value = '';
             setTimeout(() => document.getElementById('newNoteTitleInput').focus(), 50);
+        }
+
+        function confirmCreateNote() {
+            const title = document.getElementById('newNoteTitleInput').value.trim();
+            if (!title) {
+                alert('请输入页面名称哦~');
+                return;
+            }
+            const newId = notesList.length > 0 ? Math.max(...notesList.map(n => n.id)) + 1 : 1;
+            notesList.push({ id: newId, title: title, content: '<p></p>' });
+            closeModal();
+            persistState();
+            switchView('notes', newId);
         }
 
         function openFolderModal(groupName) {
