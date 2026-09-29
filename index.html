@@ -3277,7 +3277,30 @@
                 badge.innerText = '提交中...';
 
                 if (isPublic) {
-                    // 自动生成 8 位随机密码：数字、英文、罗马符号
+                    // 1. 自动检测公开仓库是否存在，若不存在则尝试通过 API 自动创建
+                    const checkRepoRes = await fetch(`https://api.github.com/repos/${publicRepo}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (checkRepoRes.status === 404) {
+                        const createRes = await fetch(`https://api.github.com/user/repos`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: publicRepo.split('/')[1],
+                                description: "MarkFlow Public Stockage Repository",
+                                private: false
+                            })
+                        });
+                        if (!createRes.ok) {
+                            const errJson = await createRes.json();
+                            throw new Error(`自动创建公开仓库失败: ${errJson.message || '未知错误'}`);
+                        }
+                    } else if (!checkRepoRes.ok) {
+                        throw new Error(`无法访问公开仓库，请检查 Token 权限。`);
+                    }
+
+                    // 2. 自动生成 8 位随机密码：数字、英文、罗马符号
                     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ";
                     let randomKey = "";
                     for (let i = 0; i < 8; i++) {
@@ -3287,10 +3310,10 @@
                     document.getElementById('publicRandomKeyInput').value = randomKey;
                     localStorage.setItem('markflow_pub_key', randomKey);
 
-                    // 1. 同步 Key 和数据到私有仓库，保证私有与公开密码一致
+                    // 3. 同步 Key 和数据到私有仓库
                     await manualSyncBackupQuietly();
 
-                    // 2. 将所有数据同步到公开仓库的 Stockage 文件中
+                    // 4. 将所有数据同步到公开仓库的 Stockage 文件中
                     const stockageUrl = `https://api.github.com/repos/${publicRepo}/contents/Stockage`;
                     let stockageSha = "";
                     const getRes = await fetch(stockageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -3323,8 +3346,8 @@
                         alert(`✨ 数据已成功同步到公开仓库 Stockage！\n🔑 8位混合随机访问 Key: ${randomKey}`);
                         closeControlPanelModal();
                     } else {
-                        badge.innerText = '同步失败';
-                        alert('同步到公开仓库失败。');
+                        const errPutJson = await putRes.json();
+                        throw new Error(`写入 Stockage 失败: ${errPutJson.message || '未知错误'}`);
                     }
                 } else {
                     // 销毁逻辑：清空公开仓库目录下的 Stockage 文件
@@ -3358,14 +3381,13 @@
                         alert('🔒 公开数据 Stockage 已成功销毁清除。');
                         closeControlPanelModal();
                     } else {
-                        badge.innerText = '销毁失败';
                         alert('销毁公开数据失败。');
                     }
                 }
             } catch (e) {
                 console.error(e);
                 badge.innerText = '异常';
-                alert('操作发生异常。');
+                alert(`操作发生异常: ${e.message}`);
             }
         }
 
